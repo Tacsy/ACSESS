@@ -5,6 +5,13 @@ from rdkit import Chem
 import mprms
 
 
+'''
+this module include various previous modules that corresponding to molecular
+property calculation, including:
+    Properties.py
+    SAScore.py
+    SMCM.py
+'''
 
 ############################################################
 # Assign polarizabilities to every atom.

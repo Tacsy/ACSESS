@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-
+'''
+This is the main function of the ACSESS
+'''
 
 
 ##############################
