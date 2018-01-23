@@ -12,4 +12,6 @@ calculation in order to make the code in a cleaner way, including:
     TBVerticalGapCalc.py
     ZINDOCalc.py
     Docking.py
+    GetPartialCharge.py
+    Huckel.py
 '''
