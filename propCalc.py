@@ -14,4 +14,5 @@ calculation in order to make the code in a cleaner way, including:
     Docking.py
     GetPartialCharge.py
     Huckel.py
+    Gaussian.py
 '''
