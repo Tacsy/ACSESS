@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import AllChem
 import mprms
 
 
@@ -11,6 +12,7 @@ property calculation, including:
     Properties.py
     SAScore.py
     SMCM.py
+    MQN.py
 '''
 
 ############################################################
@@ -236,3 +238,14 @@ rdkit package, with same paper as the reference. there is no need for
 us to implement these functions here
 '''
 
+############################################################
+# Calculation of Molecular Quantum Numbers as given by Nguyen
+# in ChemMedChem 4: 1803-5(2009)
+# it is also a built-in function RDkit 
+############################################################
+
+def CalcMQNs(mol):
+    molAddH = Chem.AddHs(mol)
+    MQNs = AllChem.MQNs_(molAddH)
+
+    return MQNs
