@@ -63,6 +63,7 @@ def GetScratchDir():
 #       CHEMICAL RELATED
 ########################################
 
+# calculate 3D coordinate of a molecule using RDKit build-in functions
 def Compute3DCoords(mol):
     #mol: rdkit RWMol or Mol
     molAddH = Chem.AddHs(mol)
@@ -82,3 +83,13 @@ def Compute3DCoords(mol):
         molCoords.append(coords)
 
     return molCoords
+
+# get the Murckoscaffold of a molecule
+def GetMurckoScaffold(mol):
+    #mol: rdkit RWMol or Mol
+    from rdkit.Chem.Scaffolds import MurckoScaffold
+
+    scaffold = MurckoScaffold.MakeScaffoldGeneric(mol)
+
+    #return scaffold rdkit.mol object
+    return scaffold
