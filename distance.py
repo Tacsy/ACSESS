@@ -12,6 +12,5 @@ representation and selection, including:
     PCAmodule.py
     Kohonen.py
     BuildRandomKoho.py
-    PubChemFP.py
-    MQN.py
+    MakeSubsetDistance.py
 '''
