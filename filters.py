@@ -17,44 +17,41 @@ previous filters included:
     Filters_BC.py
     QiuFilter.py
 '''
+'''
+Some clearification:
+    all filter-related function are acting on single molecule and return a
+    bool value to indicate whether a molecule should be filtered out (True)
+    or not (False)
+'''
+
 
 ############################################################
 #       Functions from QiuFilter.py
 ############################################################
 
-# ensure molecules do not have ring with ring size N
-def CheckRingSize(molList, ringSize):
-    # get mol list and return list of filterd molecules
-    filtered = []
-    
-    for mol in molList:
-        dumpMol = False
-        # calculate smallest set of rings (SSR)
-        ssr = Chem.GetSymmSSSR(mol)
-        for i in range(len(ssr)):
-            if len(list(ssr[i])) == ringSize:
-                dumpMol = True
+# ensure molecule do not have ring with ring size N
+def CheckRingSize(mol, ringSize):
+    # get mol and return bool for delete or not
+        
+    dumpMol = False
+    # calculate smallest set of rings (SSR)
+    ssr = Chem.GetSymmSSSR(mol)
+    for i in range(len(ssr)):
+        if len(list(ssr[i])) == ringSize:
+            dumpMol = True
 
-        if dumpMol:
-            filtered.append(mol)
-    
-    return filtered
+    return dumpMol
 
-# ensure molecules do not have a bond with bondorder N
-def CheckBondOrder(molList, bondOrder):
-    # get mol list and return list of filtered molecules
+# ensure molecule do not have a bond with bondorder N
+def CheckBondOrder(mol, bondOrder):
+    # get mol and return bool for delete or not  
     # bondOrder should be double, 1.0 for single, 1.5 for aromatic, 2.0 for
     # double, 3.0 for triple
-    filtered = []
 
-    for mol in molList:
-        dumpMol = False
-        # loop over bonds in molecule and check bond order
-        for bond in mol.GetBonds():
-            if bond.GetBondTypeAsDouble() == bondOrder:
-                dumpMol = True
+    dumpMol = False
+    # loop over bonds in molecule and check bond order
+    for bond in mol.GetBonds():
+        if bond.GetBondTypeAsDouble() == bondOrder:
+            dumpMol = True
 
-        if dumpMol:
-            filtered.append(mol)
-
-    return filtered
+    return dumpMol
