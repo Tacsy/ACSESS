@@ -23,7 +23,22 @@ Some clearification:
     bool value to indicate whether a molecule should be filtered out (True)
     or not (False)
 '''
+############################################################
+#       Functions from Filter.py
+############################################################
 
+# ensure molecule has specific pattern
+def CheckSubstructure(mol, patterns):
+    # get mol and return bool for filter or not
+    # patterns: list of pattern for substructure search 
+    dumpMol = False
+    # for substructure search
+    for pattern in xrange(len(patterns)):
+        if mol.HasSubstructMatch(pattern):
+            dumpMol = True
+            break
+
+    return dumpMol
 
 ############################################################
 #       Functions from QiuFilter.py
@@ -31,7 +46,7 @@ Some clearification:
 
 # ensure molecule do not have ring with ring size N
 def CheckRingSize(mol, ringSize):
-    # get mol and return bool for delete or not
+    # get mol and return bool for filter or not
         
     dumpMol = False
     # calculate smallest set of rings (SSR)
@@ -44,7 +59,7 @@ def CheckRingSize(mol, ringSize):
 
 # ensure molecule do not have a bond with bondorder N
 def CheckBondOrder(mol, bondOrder):
-    # get mol and return bool for delete or not  
+    # get mol and return bool for filter or not  
     # bondOrder should be double, 1.0 for single, 1.5 for aromatic, 2.0 for
     # double, 3.0 for triple
 
