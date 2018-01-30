@@ -234,18 +234,6 @@ def AutoCorreationVector(mol, props, maxBonds):
 
 
 ############################################################
-# Calculation of logp and molar refractivity as given by Crippen in 
-# J Chem Inf Comp Sci 1999 39(5) 868-873                   
-# dx.doi.org/10.1021/ci990307l                             
-############################################################
-
-'''
-this part from previous version of ACSESS code is now implemented in 
-rdkit package, with same paper as the reference. there is no need for 
-us to implement these functions here
-'''
-
-############################################################
 # Calculation of Molecular Quantum Numbers as given by Nguyen
 # in ChemMedChem 4: 1803-5(2009)
 # it is also a built-in function RDkit 
@@ -348,3 +336,30 @@ def CalcSAScore(mol):
         sascore = 1.0
 
     return sascore
+
+############################################################
+# Calculation of molar LogP and molar refractivity as given by 
+# Crippen in J Chem Inf Comp Sci 1999 39(5) 868-873
+# Also provided as built-in function in RDKit
+############################################################
+
+def CalcCrippenLogPAndMR(mol):
+    LogP, MR = AllChem.CalcCrippenDescriptors(mol)
+
+    return LogP, MR
+
+############################################################
+# Determine a molecule type according to ring analysis,
+# belongs to the following categories: aromatic, heteroaromatic,
+# fused-heterocycle, fused-cycle, polyheterocyclic, monoheterocyclic,
+# polycyclic, monocyclic, heteroacyclic, acyclic
+############################################################
+
+'''
+currently it is shown that this function is not called in any other modules, so
+we will keep it on hold for further revision since it could be useful in some
+cases.
+'''
+
+def ClassifyMolType(mol):
+    return 0
