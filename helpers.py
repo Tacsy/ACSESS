@@ -74,6 +74,17 @@ def Enpickle(obj, fname, protocal=2, gz=False):
     pickle.dump(obj, myfile, protocal)
     myfile.close()
 
+# get SMILES name of specific atom
+def GetSmilesName(atom):
+    global elements
+    symbol = elements[atom.GetAtomicNum()]
+    if atom.GetIsAromatic():
+        symbol = symbol.lower()
+    else:
+        symbol = symbol.upper()
+    
+    return symbol
+
 # extract number in a string
 def ExtractNum(string):
     outstr = ''
