@@ -4,11 +4,21 @@
 '''
 This is the main function of the ACSESS
 '''
-
+debug=True
+##############################
+# Import statements
+##############################
+import sys
+sys.path.append('.')
+import mprms
+import init
+import drivers as dr
 
 ##############################
 # Check input
 ##############################
+
+init.ReadMPRMS() #Does most of the input verification
 
 if mprms.restart: 
     openmode = 'a'
@@ -41,9 +51,7 @@ iterhead="\n-------------------- Iteration {0} ----------------\n"
 # Get starting library
 ##############################
 
-
-
-
+startiter, lib, pool= init.StartLibAndPool(mprms.restart)
 
 ###################################################
 ##########                              ###########
@@ -51,5 +59,26 @@ iterhead="\n-------------------- Iteration {0} ----------------\n"
 ##########                              ###########
 ###################################################
 
-for gen in xrange(startiter, mprms.nGens):
+if debug:
+    print "startiter:", startiter
+    print "lib:", lib
+    print "pool:", pool
 
+for gen in xrange(startiter, mprms.nGen):
+    print iterhead.format(gen)
+
+    # MUTATIONS
+    newlib = dr.DriveMutations(lib)
+
+    # FILTERS
+    newlib = dr.DriveFilters(newlib)
+
+    # Select Diverse Set
+    pool = dr.ExtendPool(pool, lib, newlib)
+    if len(pool)>mprms.subsetSize:
+        raise NotImplementedError(0)
+        #lib = Maximin(pool)
+    else:
+        lib = [ mol for mol in pool ]
+
+print "DONE"

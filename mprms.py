@@ -23,8 +23,9 @@ writeInterval = 2
 #### main ####
 ##############
 
+restart = False
 # run for 1000 generations
-nGen = 1000
+nGen = 3
 # create 40 mutants each generation
 nMut = 40
 # create 50 crossovers each generation

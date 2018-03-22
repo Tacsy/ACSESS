@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import os
 from rdkit import Chem 
+import mprms
 
 
 ######################################################
@@ -35,6 +36,7 @@ def ReadMPRMS():
 #      4. Copy of library
 ######################################################
 def StartLibAndPool(restart):
+    startiter = 0
 
     if hasattr(mprms, 'nSeed'):
         nSeed = mprms.nSeed
@@ -46,7 +48,8 @@ def StartLibAndPool(restart):
     #####################
 
     #case 1: restart file ('itX.lib.gz')
-    if 
+    if restart:
+        pass
     #case 2: read from mprms.seedfile
     elif hasattr(mprms, 'seedFile'):
         seedFile = mprms.seedFile
@@ -107,4 +110,4 @@ def StartLibAndPool(restart):
         print 'Initializing pool from library'
         pool = [mol for mol in lib]
 
-    return
+    return startiter, lib, pool

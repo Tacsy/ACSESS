@@ -3,6 +3,8 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+from exceptions import *
+
 
 '''
 This filter.py contains all the possible filters in the previous version of
@@ -16,6 +18,11 @@ previous filters included:
     SMUFilters.py
     Filters_BC.py
     QiuFilter.py
+
+Note from Jos:
+    I don't think it is possible to include and combine every filter into this module
+    since this module would become unmanageable. We could make a filters subfolder to 
+    order them. 
 '''
 '''
 Some clearification:
@@ -23,9 +30,73 @@ Some clearification:
     bool value to indicate whether a molecule should be filtered out (True)
     or not (False)
 '''
+
+ActiveFilters = dict()
+FilterFlavor = 'GDB'
+MAXTRY=10
+
 ############################################################
 #       Functions from Filter.py
 ############################################################
+
+def FilterInit():
+    global ActiveFilters, FilterFlavor
+
+    if FilterFlavor=='GDB':
+        from filters import GDBFilters as FilterFlavor
+    else:
+        raise TypeError('FilterFlavor not recognized')
+    # so every filterflavor-module has a dictionary which is formatted as:
+    # filterfunction might be a filterclass with a __call__ attribute though.
+    # {'filtername1':filterfunction1, 'filtername2':filterfunction2, ... }
+    ActiveFilters.update(FilterFlavor.AllFilters)
+
+    return
+
+def FixAndFilter(mol):
+
+    # HERE AN EXTRY MAXTRY LAYER SHOULD BE ADDED AS IN THE OLD VERSION.
+    # THIS IS JUST TO TEST
+    changed=False
+    failure=False
+    for _ in xrange(MAXTRY):
+        # in old version: here prepare for 2D filters
+
+        # run through all filters:
+        for filtername in ActiveFilters:
+            failure = ActiveFilters[filtername](mol)
+            if failure:
+                try:
+                    success= ActiveFilters[filtername].Fix(mol)
+                except MutateFail:
+                    success=False
+                    changed=True
+            if not success: return changed, failure
+            else:
+                changed=True
+                #cn.Finalize(mol)
+                break
+        if not failure: break #i.e. all filters passed without problems
+    return changed, failure
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ensure molecule has specific pattern
 def CheckSubstructure(mol, patterns):
