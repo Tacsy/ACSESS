@@ -10,6 +10,8 @@ import mprms
 # and store them all in StoredParams.py 
 ######################################################
 def ReadMPRMS():
+    import filters
+    filters.FilterInit()
     return
 
 

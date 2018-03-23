@@ -43,13 +43,14 @@ def FilterInit():
     global ActiveFilters, FilterFlavor
 
     if FilterFlavor=='GDB':
-        from filters import GDBFilters as FilterFlavor
+        from Filters import GDBFilters as FilterFlavor
     else:
         raise TypeError('FilterFlavor not recognized')
     # so every filterflavor-module has a dictionary which is formatted as:
     # filterfunction might be a filterclass with a __call__ attribute though.
     # {'filtername1':filterfunction1, 'filtername2':filterfunction2, ... }
     ActiveFilters.update(FilterFlavor.AllFilters)
+    print "ActiveFilters:", ActiveFilters
 
     return
 
@@ -71,17 +72,103 @@ def FixAndFilter(mol):
                 except MutateFail:
                     success=False
                     changed=True
-            if not success: return changed, failure
-            else:
-                changed=True
-                #cn.Finalize(mol)
-                break
+                if not success: return changed, failure
+                else:
+                    changed=True
+                    #cn.Finalize(mol)
+                    break
         if not failure: break #i.e. all filters passed without problems
     return changed, failure
 
+##################################
+# These use to be in Classes.py: #
+##################################
 
+class NewFilter(object):
+    def __init__(self, name):
+        self.name=name
+        self.HasFix=False
 
+    def __call__(self, mol):
+        filtered=self.function(mol)
+        if filtered:
+            if type(filtered)==bool or filtered==1: return self.name
+            else: return filtered
+        else: return 0
 
+    def __repr__(self):
+        return "NewFilter: {}\n".format(self.name)
+
+    def Fix(self,mol):
+        if self.HasFix:
+            return self.fixroutine(mol)
+        else: return False
+
+    def SetFilterRoutine(self,filterroutine):
+        self.function=filterroutine
+
+    def SetFixRoutine(self,fixroutine):
+        self.fixroutine=fixroutine
+        self.HasFix=True
+
+class NewPatternFilter(NewFilter):
+    def __init__(self, name):
+        self.name=name
+        self.HasExceptions=False
+        self.HasFix=False
+
+    def __call__(self, mol):
+        if self.HasExceptions:
+            if len(self.FilterWithExceptions(mol))>0:
+                return self.name
+            else: return False
+        else:
+            #if self.pattern.SingleMatch(mymol): return self.name
+            if mol.HasSubstructMatch(self.pattern): return self.name
+            else: return False
+
+    def __repr__(self):
+        #return "{}\n".format(self.name, self.pattern.GetPattern().GetTitle())
+        return "{} {}".format(self.name, Chem.MolToSmarts(self.pattern))
+
+    def Fix(self,mymol):
+        if self.HasFix:
+            return self.fixroutine(mymol,self)
+        else: return False
+
+    def SetFilterRoutine(self,*args,**kwargs): raise NotImplementedError()
+
+    def SetFilterPattern(self,pattern):
+        self.pattern=pattern
+
+    def SetExceptions(self,exc):
+        self.HasExceptions=True
+        try: len(exc)
+        except TypeError: exc=[exc]
+        self.MyExceptions=exc
+
+    def FilterWithExceptions(self, mol):
+        #if oe.OEHasExplicitHydrogens(mymol) and not Radical:
+        #    print 'WARNING: Explicit hydrogens detected in FilterWithExceptions'
+        #    print '     Filters may not function properly'
+        #    print mymol.GetData('isosmi')
+
+        #matches=list( self.pattern.Match(mymol,True) )
+        matches = list( mol.GetSubstructMatches(self.pattern))
+        if not self.HasExceptions: return matches
+
+        # RDKit automattically return a tuple of matches, each already a tuple.
+        matches=[ set(match) for match in matches ]
+
+        # Remove matches that are substructures of exceptions
+        # NOT TESTED:
+        for exception in self.MyExceptions:
+            exmatches= mol.GetSubstructMatches(exception)
+            for exmatch in exmatches: # for each exception substructure found:
+                matches= [match for match in matches if not match.issubset( exmatches ) ]
+                if len(matches)==0: break
+            if len(matches)==0: break
+        return matches
 
 
 
