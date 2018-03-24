@@ -2,34 +2,10 @@
 
 from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
+from rdkithelpers import *
+import random
 
 AllFilters={}
-############ NEW RDKIT HELPERS: #########################
-def GetSmallestRingSize(atom):
-    return min([ i for i in range(1,20) if atom.IsInRingSize(i) ])
-
-def GetAtoms(indices, mol):
-    return filter(lambda atom:atom.GetIdx() in match, m.GetAtoms())
-
-def GetBonds(indices, mol):
-    bonds=[]
-    for bond in mol.GetBonds():
-        if all( index in indices for index in ( bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())):
-            bonds.append(bond)
-    return bonds
-
-def GetXAtoms(mol, num=6, notprop=None):
-    '''gets the number of atoms in mol with atomic num. default carbon, 6 and not has prop notprop
-    for every atom it is checked if it has property indicated with the string notprop
-    '''
-    if notprop:
-        requirement = lambda atom:atom.GetAtomicNum()==num and not atom.HasProp(notprop)
-    else:
-        requirement = lambda atom:atom.GetAtomicNum()==num
-    return filter( requirement, mol.GetAtoms())
-
-# originally from Helpers:
-# AtNotInGroup=PyAtomPredicate(lambda x: not x.HasData('mygroup') )
 
 ############ FILTERS
 
@@ -63,12 +39,12 @@ def FixBredt(mol):
     for match in mtemp:
         matches.append(match)
         #for atom in match.GetAtoms():
-        for atom in GetAtoms(match, mol):
+        for atom in GetIAtoms(match, mol):
             if GetSmallestRingSize( atom ) >= 8:
                 matches.pop()
                 break
     for match in matches:
-        for bond in GetBonds(match, mol): bond.SetBondType(Chem.BondType.SINGLE)
+        for bond in GetAtomIBonds(match, mol): bond.SetBondType(Chem.BondType.SINGLE)
         Chem.SetAromaticity(mol)
         changed=True
     return changed
@@ -134,12 +110,11 @@ def FixAtomQuantities(mol,filtertype=None):
     halogen = 1.0 * sum([ len(GetXAtoms(mol, num)) for num in [9,17,35,53]]) 
 
     # These are candidates for changing to satisfy the ratios
-    raise NotImplementedError('this should give back atoms not the total number')
-    carbon=GetXAtoms(mol, 6, 'group')
-    nitrogen=GetXAtoms(mol, 7, 'group')
-    oxygen=GetXAtoms(mol, 8, 'group')
-    sulfur=GetXAtoms(mol, 16, 'group')
-    halogen=sum([ GetXAtoms(mol, num, 'group') for num in [9,7,35,53]])
+    carbon  =len(GetXAtoms(mol, 6, 'group'))
+    nitrogen=len(GetXAtoms(mol, 7, 'group'))
+    oxygen  =len(GetXAtoms(mol, 8, 'group'))
+    sulfur  =len(GetXAtoms(mol, 16, 'group'))
+    halogen=sum([ len(GetXAtoms(mol, num, 'group')) for num in [9,7,35,53]])
     
     
     while nNit / nCarb > NtoC:
@@ -236,15 +211,15 @@ def FixByRemovingHeteroatoms(mol,filter):
     while len(matches)>0:
         match=matches[0]
         fixd=False
-        for atom in match.GetAtoms():
-            if (atom.target.GetAtomicNum() not in (1,6)) and \
-                   CanRemoveAtom(atom.target):
-                if atom.target.HasData('grouprep'):
-                    mt.RemoveGroup(mol,atom.target.GetData('mygroup'))
-                atom.target.SetAtomicNum(6)
+        for atom in GetIAtoms(match, mol):
+            if (atom.GetAtomicNum() not in (1,6)) and \
+                   CanRemoveAtom(atom):
+                if atom.HasProp('grouprep'):
+                    mt.RemoveGroup(mol,atom.GetProp('group'))
+                atom.SetAtomicNum(6)
                 changed=True
-                Chem.SanitizeMol(mol)
-                Chem.SetAromaticity(mol)
+                #Chem.SanitizeMol(mol)
+                #Chem.SetAromaticity(mol)
                 matches = filter.FilterWithExceptions(mol)
                 fixd=True
                 break
@@ -259,11 +234,11 @@ def FixBySaturating(mol,filter):
     while len(matches)>0:
         match=matches[0]
         fixd=False
-        for bond in match.GetBonds():
-            if not bond.target.HasData('mygroup') and bond.target.GetOrder()>1:
+        for bond in GetAtomIBonds(match, mol):
+            if not bond.HasProp('group') and bond.GetBondTypeAsDouble()>1.0:
                 changed=True
                 fixd=True
-                bond.target.SetOrder(1)
+                bond.SetBondType(Chem.BondType.SINGLE)
                 matches = filter.FilterWithExceptions(mol)
                 break #just need to modify the first bond
         if not fixd: raise MutateFail()
@@ -276,9 +251,9 @@ def RemoveBondNumber(iBond):
         changed=False
         matches = filter.FilterWithExceptions(mol)
         while len(matches)>0:
-            bonds= list(matches[0].GetBonds())
-            if not bonds[iBond].target.HasData('mygroup'):
-                mol.DeleteBond( bonds[iBond].target )
+            bonds= list(GetAtomIBonds(matches[0], mol))
+            if not bonds[iBond].HasProp('group'):
+                mol.DeleteBond( bonds[iBond] )
                 changed=True
             else: break
             matches = filter.FilterWithExceptions(mol)
@@ -534,7 +509,7 @@ def fixIntramol(mol):
     else: mypatterns=intraAnd
 
     for pattern in mypatterns:
-        if pattern.SingleMatch(mol):
+        if mol.HasSubstructMatch:
             intraFindTemp.SetFilterPattern(pattern)
             madeChange=FixByRemovingHeteroatoms(mol,intraFindTemp)
             changed=changed or madeChange
@@ -677,13 +652,13 @@ def FixTopo144Bridge(mol,filter):
     changed=False
     matches = filter.FilterWithExceptions(mol)
     while len(matches)>0:
-        atoms = list(matches[0].GetAtoms())
-        bonds = list(matches[0].GetBonds())
-        if not (bonds[0].target.HasData('mygroup') or
-                bonds[2].target.HasData('mygroup') ):
-            mol.DeleteBond(bonds[0].target)
-            mol.DeleteBond(bonds[2].target)
-            mol.NewBond( atoms[1].target,atoms[4].target,1)
+        atoms = list(GetIAtoms(matches[0], mol))
+        bonds = list(GetAtomIBonds(matches[0], mol))
+        if not (bonds[0].HasProp('group') or
+                bonds[2].HasProp('group') ):
+            mol.DeleteBond(bonds[0])
+            mol.DeleteBond(bonds[2])
+            mol.NewBond( atoms[1], atoms[4], 1)
             changed=True
         else: break
         matches = filter.FilterWithExceptions(mol)

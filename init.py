@@ -10,6 +10,12 @@ import mprms
 # and store them all in StoredParams.py 
 ######################################################
 def ReadMPRMS():
+    mprms.MxAtm=50
+    mprms.EdgeRatio=0.1
+    mprms.EdgeLen=10
+
+    import mutate
+    mutate.MutateInit()
     import filters
     filters.FilterInit()
     return
@@ -58,6 +64,8 @@ def StartLibAndPool(restart):
         supplier = Chem.SmilesMolSupplier(seedFile)
 
         lib = [mol for mol in supplier]
+        setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
+        map(setisosmi, lib)
         print "Seeding with " + str(len(lib)) + " molecules from " + seedFile
 
     #case 3: read from mprms.seedlib

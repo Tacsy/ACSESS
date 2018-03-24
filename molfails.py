@@ -3,7 +3,6 @@
 import os
 from rdkit import Chem
 
-
 #These exceptions are used only for signaling 
 #which means no molecular information is carried with them
 
@@ -12,7 +11,6 @@ class NoGeom(Exception):
 
 class NoConvergence(Exception):
     pass
-
 
 #Subexceptions of the MolFail exception can carry lots of information
 #about a troublesome molecule with them.

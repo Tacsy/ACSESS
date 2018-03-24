@@ -9,6 +9,7 @@ debug=True
 # Import statements
 ##############################
 import sys
+from rdkit import Chem
 sys.path.append('.')
 import mprms
 import init
@@ -59,13 +60,14 @@ startiter, lib, pool= init.StartLibAndPool(mprms.restart)
 ##########                              ###########
 ###################################################
 
-if debug:
-    print "startiter:", startiter
-    print "lib:", lib
-    print "pool:", pool
-
 for gen in xrange(startiter, mprms.nGen):
     print iterhead.format(gen)
+
+    # PRELOGGING
+    if debug:
+        print "startiter:", startiter
+        print "len lib:", len(lib)
+        print "len pool:", len(pool)
 
     # MUTATIONS
     newlib = dr.DriveMutations(lib)
@@ -80,5 +82,9 @@ for gen in xrange(startiter, mprms.nGen):
         #lib = Maximin(pool)
     else:
         lib = [ mol for mol in pool ]
+
+    if debug:
+        with open('mylib','w') as f:
+            for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')
 
 print "DONE"
