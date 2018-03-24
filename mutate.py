@@ -9,7 +9,6 @@ from molfails import MutateFail
 import mprms
 
 MAXTRY=100
-
 ###############################################
 # Initialization the module
 ###############################################
@@ -17,7 +16,7 @@ MAXTRY=100
 def MutateInit():
     elements = mprms.elements
     halogens = [9,17,35,53]
-    global Elements, Halogens
+    global elements, halogens
     
     #do intersection and difference 
     Elements = set(elements) - set(halogens)
@@ -174,7 +173,7 @@ def Crossover(m1, m2):
 # Obviously, there's a problem if it's negative
 ## After implicit hydrogens are assigned with the valence model,
 ## this can be replaced by the implicit hydrogen count
-#MaxValence={6:4, 7:3, 8:2, 9:1, 15:3, 17:1, 16:2, 35:1, 50:3, 51:2}
+# MaxValence={6:4, 7:3, 8:2, 9:1, 15:3, 17:1, 16:2, 35:1, 50:3, 51:2}
 #Jos added hydrogen in this list. I don't know if that is a good idea but for 
 # openshell a lot of H's will end up in the SMILES strings
 MaxValence={1:1, 6:4, 7:3, 8:2, 9:1, 15:3, 17:1, 16:2, 35:1, 50:3, 51:2}
@@ -227,3 +226,80 @@ def FlipBond(mol,bond):
     elif oldorder==2 and full: add=-1
     else: add=random.choice( (-1,1) )
     bond.SetBondType(bondorder[oldorder+add])
+
+
+#@captureMolExceptions
+def SwitchAtom(mol,atom):
+    if atom.HasProp('group') and not atom.HasProp('grouprep'):
+        raise MutateFatal(mol, 'protected or grouped atom passed to switchatom')
+
+    changed=False
+
+    # # # # # # # # # # # # #
+    # from Filters import OptSulfone
+    # Special rules for sulfurs that can optionally be sulfones
+    #if atom.GetAtomicNum()==16 and len(OptSulfone)>0:
+    #    SulfCand=set()
+    #    for group in OptSulfone:
+    #        for match in mol.GetSubstructMatches(group, True):
+    #            for mat in GetIAtoms(match, mol):
+    #                if mat.target.IsSulfur(): SulfCand.add(mat.target)
+    #    if atom in SulfCand and random.random()>0.4:
+    #        if atom.HasProp('grouprep'):
+    #            RemoveGroup(mol,atom.GetProp('mygroup'))
+    #            return
+    #        elif not atom.HasProp('mygroup'):
+    #            MakeSulfone(mol,atom)
+    #            return
+
+    #If it's a group representative, switching it will delete the
+    #rest of the group; since they're hard to create, they're also
+    #hard to destroy
+    #if atom.HasProp('grouprep':
+    #    if random.random()>0.3:
+    #        RemoveGroup(mol,atom.GetProp('mygroup'))
+    #        changed=True
+    #    else:
+    #        raise MutateFail()
+
+    # # # # # # # # # # # # # #
+    #Special cases for Nitro groups and halogens,
+    #which can only be on aromatic rings
+    #neighbors=list(atom.GetAtoms())
+    #if (  atom.GetExplicitValence()==1
+    #      and neighbors[0].IsAromatic() ):
+
+        # Add a halogen, if possible
+    #    if (len(Halogens)>0
+    #          and random.random()>0.6
+    #          and neighbors[0].GetAtomicNum()==6):
+    #        CanAddHalogen=True
+    #        nextneighbors=neighbors[0].GetAtoms()
+    #        for nb in nextneighbors:
+    #            if (  nb.GetAtomicNum() != 6
+    #                  and nb.GetIdx() != atom.GetIdx()):
+    #                CanAddHalogen=False
+    #                break
+    #        if CanAddHalogen:
+    #            atom.SetAtomicNum( random.choice(Halogens))
+    #            return
+
+        # If not a halogen, maybe make a nitro group
+    #    if random.random() < 0.15:
+    #        MakeNitro(mol,atom)
+    #        return
+
+    # # # # # # # # #
+    # Regular atom switching
+    atnum=atom.GetAtomicNum()
+    elems= [ el for el in elements if el !=atnum ]
+
+    for itry in range(50):
+        cand=random.choice(elems)
+        if MaxValence[cand]>=atom.GetExplicitValence():
+            atom.SetAtomicNum(cand)
+            return
+
+    if not changed:
+        raise MutateFail() # if here, mutation failed ...
+    return

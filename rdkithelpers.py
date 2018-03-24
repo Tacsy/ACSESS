@@ -27,6 +27,7 @@ def MolBondIsInGroup(mol, groupid):
     requirement = lambda bond:bond.HasProp('group') and bond.GetProp('group')==groupid
     return filter(requirement, mol.GetBonds())
 CanRemoveAtom=lambda atom:not atom.HasProp('protected') and not atom.HasProp('fixed')
+CanChangeAtom=lambda atom:(not atom.HasProp('group')) or atom.HasProp('grouprep')
 
 def GetSmallestRingSize(atom):
     return min([ i for i in range(1,20) if atom.IsInRingSize(i) ])

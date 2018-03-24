@@ -99,7 +99,7 @@ def FixAtomQuantities(mol,filtertype=None):
 
     nCarb=1.0*len(GetXAtoms(mol, 6))+nsulfones
     if nCarb==0: #You really gotta have carbon, sure!
-        newcarbons=list( mol.GetAtoms( mt.AtNotInGroup ))
+        newcarbons=GetAtoms(mol, notprop='group')
         if len(newcarbons)==0: raise MutateFail()
         random.choice(newcarbons).SetAtomicNum(6)
         changed=True
@@ -107,14 +107,15 @@ def FixAtomQuantities(mol,filtertype=None):
     nNit = 1.0 * len(GetXAtoms(mol, 7)) - nnitriles -nnitros
     nOxy = 1.0 * len(GetXAtoms(mol, 8))-2.0*nsulfones+nnitros
     nSulf= 1.0 * len(GetXAtoms(mol, 16))
-    halogen = 1.0 * sum([ len(GetXAtoms(mol, num)) for num in [9,17,35,53]]) 
+    nHalo = 1.0 * sum([ len(GetXAtoms(mol, num)) for num in [9,17,35,53]]) 
 
     # These are candidates for changing to satisfy the ratios
-    carbon  =len(GetXAtoms(mol, 6, 'group'))
-    nitrogen=len(GetXAtoms(mol, 7, 'group'))
-    oxygen  =len(GetXAtoms(mol, 8, 'group'))
-    sulfur  =len(GetXAtoms(mol, 16, 'group'))
-    halogen=sum([ len(GetXAtoms(mol, num, 'group')) for num in [9,7,35,53]])
+    carbon  =GetXAtoms(mol, 6, 'group')
+    nitrogen=GetXAtoms(mol, 7, 'group')
+    oxygen  =GetXAtoms(mol, 8, 'group')
+    sulfur  =GetXAtoms(mol, 16, 'group')
+    halogens=[ (GetXAtoms(mol, num, 'group')) for num in [9,7,35,53]]
+    halogen =[ atom for hatoms in halogens for atom in hatoms ]
     
     
     while nNit / nCarb > NtoC:
@@ -177,10 +178,11 @@ AllFilters['triple bond in ring']=NewFilter('triple bond in ring')
 
 def TripleBondInRing(mol):
     for bond in mol.GetBonds():
-        if bond.IsInRing() and bond.GetBondType=='TRIPLE':
+        if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
             # test if Ringsize smaller than 9:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 #if oe.OEBondGetSmallestRingSize(bond)<9 and bond.GetOrder()==3:
+                print 'yes'
                 return "triple bond in ring"
     return False
 AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
@@ -188,7 +190,7 @@ AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
 def FixTripleBondInRing(mol):
     changed=False
     for bond in mol.GetBonds():
-        if bond.IsInRing() and bond.GetBondType=='TRIPLE':
+        if bond.IsInRing() and bond.GetBondType==Chem.BondType.TRIPLE:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
@@ -215,7 +217,7 @@ def FixByRemovingHeteroatoms(mol,filter):
             if (atom.GetAtomicNum() not in (1,6)) and \
                    CanRemoveAtom(atom):
                 if atom.HasProp('grouprep'):
-                    mt.RemoveGroup(mol,atom.GetProp('group'))
+                    mutate.RemoveGroup(mol,atom.GetProp('group'))
                 atom.SetAtomicNum(6)
                 changed=True
                 #Chem.SanitizeMol(mol)

@@ -129,7 +129,8 @@ def SingleMutate(candidate):
     #global nAdd,nAddFail,nRemove,nRemoveFail,nBreak,nBreakFail,\
     #       nNewRing,nNewRingFail,nFlip,nFlipFail,nAtomType,nAtomTypeFail,\
     #       nNoMutation
-    nFlip, nFlipFail=(0,0)
+    nFlip,     nFlipFail     =(0,0)
+    nAtomType, nAtomTypeFail =(0,0)
 
     parent=candidate.GetProp('isosmi')
     ResetProps(candidate)
@@ -155,6 +156,17 @@ def SingleMutate(candidate):
             Finalize(candidate)
         except MutateFail:
             nFlipFail+=1
+
+    #Flip atom identity
+    atoms=filter(CanChangeAtom, candidate.GetAtoms())
+    if random.random()<atomflip and len(atoms)>0:
+        nAtomType+=1
+        try:
+            mutate.SwitchAtom(candidate,random.choice(atoms))
+            change=True
+            Finalize(candidate)
+        except MutateFail as mmf:
+            nAtomTypeFail+=1
 
     return candidate
 
