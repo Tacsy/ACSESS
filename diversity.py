@@ -78,7 +78,8 @@ for gen in xrange(startiter, mprms.nGen):
     # Select Diverse Set
     pool = dr.ExtendPool(pool, lib, newlib)
     if len(pool)>mprms.subsetSize:
-        raise NotImplementedError(0)
+        lib = [ mol for mol in pool[-mprms.subsetSize:]]
+        #raise NotImplementedError(0)
         #lib = Maximin(pool)
     else:
         lib = [ mol for mol in pool ]

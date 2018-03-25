@@ -120,23 +120,38 @@ def MakeMutations(candidate):
     candidate=SingleMutate(candidate)
     #candidate,trimmed = TrimAtoms(candidate)
     #if MutateStereo: FlipStereo(candidate)
-
-    Finalize(candidate)
+    try:
+        Finalize(candidate)
+    except ValueError:
+        print Chem.MolToSmiles(candidate)
 
     return candidate
 
-def SingleMutate(candidate):
+def SingleMutate(candidateraw):
+    #############################################################
+    # I still need to test if the candidate is REALLY mutated
+    # when actually a RWMol is mutated!. 
+    # maybe we have to return the candidate or something?
+    #############################################################
+
+    if candidateraw is None: raise ValueError('candidate is none')
+    else: candidate = Chem.RWMol(candidateraw)
     #global nAdd,nAddFail,nRemove,nRemoveFail,nBreak,nBreakFail,\
     #       nNewRing,nNewRingFail,nFlip,nFlipFail,nAtomType,nAtomTypeFail,\
     #       nNoMutation
     nFlip,     nFlipFail     =(0,0)
     nAtomType, nAtomTypeFail =(0,0)
+    nNewRing,  nNewRingFail  =(0,0)
+    nBreak,    nBreakFail    =(0,0)
+    nAdd,      nAddFail      =(0,0)
+    nRemove,   nRemoveFail   =(0,0)
 
     parent=candidate.GetProp('isosmi')
     ResetProps(candidate)
     change=False
     candidate.SetProp('parent',parent)
 
+    # 0. Change Backbone
     #If there's a mutatable backbone, call custom routines to mutate it
     #if MutateBackbone:
     #    try:
@@ -146,28 +161,93 @@ def SingleMutate(candidate):
     #            return candidate
     #    except mt.MutateFail: pass
 
-    #Try a bond-flip:
+    # 1. bond-flip:
     bonds=list( GetBonds(candidate, notprop='group') )
     if random.random()<bondflip and len(bonds)>0:
         nFlip+=1
         try:
-            mutate.FlipBond(candidate,random.choice(bonds))
-            change=True
-            Finalize(candidate)
+            try:
+                mutate.FlipBond(candidate,random.choice(bonds))
+                change=True
+                Finalize(candidate)
+            except: raise MutateFail
         except MutateFail:
             nFlipFail+=1
 
-    #Flip atom identity
+    # 2. Flip atom identity
     atoms=filter(CanChangeAtom, candidate.GetAtoms())
     if random.random()<atomflip and len(atoms)>0:
         nAtomType+=1
         try:
             mutate.SwitchAtom(candidate,random.choice(atoms))
             change=True
-            Finalize(candidate)
-        except MutateFail as mmf:
+            try: Finalize(candidate)
+            except: raise MutateFail
+        except MutateFail:
             nAtomTypeFail+=1
 
+    # 3. add a ring - either a new aromatic ring, or bond
+    # Aromatic ring addition disabled - probably not necessary
+    if random.random()<ringadd:
+        nNewRing+=1
+        try:
+            mutate.AddBond(candidate)
+            try: Finalize(candidate)
+            except: raise MutateFail
+            #return candidate
+        except MutateFail:
+            nNewRingFail+=1
+
+    # 4. Try to remove a bond to break a cycle
+    if random.random() < RingRemove:
+        bondringids = candidate.GetRingInfo().BondRings()
+        # need to flatten bondringids:
+        if bondringids:
+            # fancy manner to flatten a list of tuples with possible duplicates
+            bondringids = set.intersection(*map(set, bondringids))
+            bonds=GetIBonds(bondringids, candidate, notprop='group')
+        else: bonds=[]
+        nBreak+=1
+        if len(bonds) != 0:
+            mutate.RemoveBond(candidate,random.choice(bonds))
+            try: Finalize(candidate)
+            except: raise MutateFail
+            #return candidate
+        else:
+            nBreakFail+=1
+
+    # 5. add an atom
+    atoms = GetAtoms(candidate, notprop='protected')
+    bonds = GetBonds(candidate, notprop='group'    )
+    if ( random.random() < AddFreq and len(atoms)+len(bonds)>0 ):
+        nAdd+=1
+        try:
+            mutate.AddAtom(candidate,random.choice(atoms+bonds))
+            try: Finalize(candidate)
+            except: raise MutateFail
+            #return candidate
+        except MutateFail:
+            nAddFail+=1
+
+    # 6. remove an atom
+    atoms= filter(CanRemoveAtom, candidate.GetAtoms())
+    if len(atoms)>1 and random.random() < DelFreq:
+        nRemove+=1
+        try:
+            try:
+                mutate.RemoveAtom(candidate,random.choice(atoms))
+                Finalize(candidate)
+            except: raise MutateFail
+            #return candidate
+        except MutateFail:
+            nRemoveFail+=1
+
+    # Finally: # necessary? # I believe this is not properly implemented
+    # so I skip this error raising
+    #if not change:
+    #    nNoMutation+=1
+    #    raise MutateFail()
+    if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
     return candidate
 
 

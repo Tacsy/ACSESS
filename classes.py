@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-
-
-
-
 class Counter(dict):
     #creat a counter of list in dictionary format
 

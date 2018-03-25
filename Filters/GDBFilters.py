@@ -3,6 +3,7 @@
 from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
 from rdkithelpers import *
+from molfails import *
 import random
 
 AllFilters={}
@@ -22,7 +23,7 @@ def BredtsRule(mol):
     for match in BredtViolation.FilterWithExceptions(mol):
         macrocycle=False
         #for atom in match.GetAtoms():
-        atoms = filter(lambda x:x.GetIdx() in match, m.GetAtoms())
+        atoms = filter(lambda x:x.GetIdx() in match, mol.GetAtoms())
         for atom in atoms:
             if GetSmallestRingSize(atom) >= 8:
                 macrocycle=True
@@ -255,7 +256,8 @@ def RemoveBondNumber(iBond):
         while len(matches)>0:
             bonds= list(GetAtomIBonds(matches[0], mol))
             if not bonds[iBond].HasProp('group'):
-                mol.DeleteBond( bonds[iBond] )
+                #mol.RemoveBond( bonds[iBond].GetBeginAtomIdx(), bonds[iBond].GetEndAtomIdx() )
+                break
                 changed=True
             else: break
             matches = filter.FilterWithExceptions(mol)
@@ -658,9 +660,9 @@ def FixTopo144Bridge(mol,filter):
         bonds = list(GetAtomIBonds(matches[0], mol))
         if not (bonds[0].HasProp('group') or
                 bonds[2].HasProp('group') ):
-            mol.DeleteBond(bonds[0])
-            mol.DeleteBond(bonds[2])
-            mol.NewBond( atoms[1], atoms[4], 1)
+            mol.RemoveBond(bonds[0].GetBeginAtomIdx(), bonds[0].GetEndAtomIdx())
+            mol.RemoveBond(bonds[2].GetBeginAtomIdx(), bonds[2].GetEndAtomIdx())
+            mol.AddBond( atoms[1], atoms[4], bondorder[1])
             changed=True
         else: break
         matches = filter.FilterWithExceptions(mol)

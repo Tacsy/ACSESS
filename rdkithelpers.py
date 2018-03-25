@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-
 from rdkit import Chem
+
+bondorder={ 1:Chem.BondType.SINGLE,
+            2:Chem.BondType.DOUBLE,
+            3:Chem.BondType.TRIPLE }
 
 ############ FROM CANONICAL #############################
 def Finalize(mol):
@@ -32,7 +35,7 @@ CanChangeAtom=lambda atom:(not atom.HasProp('group')) or atom.HasProp('grouprep'
 def GetSmallestRingSize(atom):
     return min([ i for i in range(1,20) if atom.IsInRingSize(i) ])
 
-# Two Indices based getters:
+# Three Indices based getters:
 def GetIAtoms(indices, mol, notprop=None):
     if notprop:
         requirement = lambda atom:atom.GetIdx() in indices and not atom.HasProp(notprop)
@@ -44,7 +47,14 @@ def GetIBonds(indices, mol, notprop=None):
         requirement = lambda bond:bond.GetIdx() in indices and not bond.HasProp(notprop)
     else:
         requirement = lambda bond:bond.GetIdx() in indices
-    return filter(requirement, m.GetBonds())
+    return filter(requirement, mol.GetBonds())
+def GetAtomIBonds(atomids, mol):
+    ''' gets bonds based on the atom indices '''
+    bonds=[]
+    for bond in mol.GetBonds():
+        if all( index in atomids for index in ( bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())):
+            bonds.append(bond)
+    return bonds
 
 def GetAtoms(mol, notprop=None):
     if notprop:
@@ -58,12 +68,6 @@ def GetBonds(mol, notprop=None):
     else:
         requirement = lambda bond:True
     return filter(requirement, mol.GetBonds())
-def GetAtomIBonds(atomids, mol):
-    bonds=[]
-    for bond in mol.GetBonds():
-        if all( index in atomids for index in ( bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())):
-            bonds.append(bond)
-    return bonds
 
 def GetXAtoms(mol, num=6, notprop=None):
     '''gets the number of atoms in mol with atomic num. default carbon, 6 and not has prop notprop

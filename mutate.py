@@ -73,7 +73,7 @@ def GetFragment(mol):
         if any( frag.GetNumAtoms()<2 for frag in frags):
             #print "not enough atoms on frag"
             continue
-        print  molfrags
+        #print  molfrags
 
         # convert to RWMols?
         frags = map(Chem.RWMol, frags)
@@ -164,8 +164,11 @@ def Crossover(m1, m2):
     atom2 = random.choice(possibleA2)
     newmolRW.AddBond( atom1.GetIdx(), atom2.GetIdx(), Chem.BondType.SINGLE )
 
-    print "new mol!", Chem.MolToSmiles(newmolRW)
-    return newmolRW.GetMol()
+    #print "new mol!", Chem.MolToSmiles(newmolRW)
+    mol = newmolRW.GetMol()
+    try: Chem.SanitizeMol(mol)
+    except: raise MutateFail()
+    return mol
 
 
 #########################################
@@ -197,22 +200,19 @@ def EmptyValence(atom):
             print atom.GetAtomicNum()
             raise
 
-
     return maxv - atom.GetExplicitValence()
 
 ###############################################################################
 #                            Mutation Methods                                 #
 ###############################################################################
+#     Nota Bene! These mol objects are now based on Chem.RWMol objects!       # 
+###############################################################################
 
-#################################################################
-# Flip a bond order
-bondorder={ 1:Chem.BondType.SINGLE,
-            2:Chem.BondType.DOUBLE,
-            3:Chem.BondType.TRIPLE }
 
+# 1. Flip a bond order
 #@captureMolExceptions
 def FlipBond(mol,bond):
-    if bond.HasProp('group'): raise MutateFatal(mol,
+    if bond.HasProp('group'): raise MutateFail(mol,
         'In-group bond passed to FlipBond')
     oldorder=int(bond.GetBondTypeAsDouble())
     atom1=bond.GetBeginAtom()
@@ -226,12 +226,13 @@ def FlipBond(mol,bond):
     elif oldorder==2 and full: add=-1
     else: add=random.choice( (-1,1) )
     bond.SetBondType(bondorder[oldorder+add])
+    return mol
 
 
 #@captureMolExceptions
 def SwitchAtom(mol,atom):
     if atom.HasProp('group') and not atom.HasProp('grouprep'):
-        raise MutateFatal(mol, 'protected or grouped atom passed to switchatom')
+        raise MutateFail(mol, 'protected or grouped atom passed to switchatom')
 
     changed=False
 
@@ -246,9 +247,9 @@ def SwitchAtom(mol,atom):
     #                if mat.target.IsSulfur(): SulfCand.add(mat.target)
     #    if atom in SulfCand and random.random()>0.4:
     #        if atom.HasProp('grouprep'):
-    #            RemoveGroup(mol,atom.GetProp('mygroup'))
+    #            RemoveGroup(mol,atom.GetProp('group'))
     #            return
-    #        elif not atom.HasProp('mygroup'):
+    #        elif not atom.HasProp('group'):
     #            MakeSulfone(mol,atom)
     #            return
 
@@ -257,7 +258,7 @@ def SwitchAtom(mol,atom):
     #hard to destroy
     #if atom.HasProp('grouprep':
     #    if random.random()>0.3:
-    #        RemoveGroup(mol,atom.GetProp('mygroup'))
+    #        RemoveGroup(mol,atom.GetProp('group'))
     #        changed=True
     #    else:
     #        raise MutateFail()
@@ -302,4 +303,185 @@ def SwitchAtom(mol,atom):
 
     if not changed:
         raise MutateFail() # if here, mutation failed ...
-    return
+    return mol
+
+#@captureMolExceptions
+def AddBond(mol):
+    # NB! This function was overloaded and atoms where possible arguments
+    # Not anymore possible to get a cleaner interface
+
+    natoms=mol.GetNumAtoms()
+    if natoms<5: raise MutateFail() #don't create 4-member rings
+
+    #Don't create non-planar graphs (note that this does not prevent
+    #all non-planar graphs, but it does prevent some)
+    if natoms >= 3 and mol.GetNumBonds() >= 3*natoms-6:
+        raise MutateFail()
+
+    # List of atoms that can form new bonds
+    atoms=[atom for atom in GetAtoms(mol, notprop='protected') if EmptyValence(atom)>0]
+    if len(atoms)<2: raise MutateFail()
+
+    for i in range(MAXTRY):
+        atom1=random.choice(atoms)
+        atom2=random.choice(atoms)
+        if atom1==atom2: continue
+        # Only make rings of size 5-7
+        if not (5 <= len(Chem.GetShortestPath(mol, atom1.GetIdx(), atom2.GetIdx())) <=7): continue
+        nfreebonds1=EmptyValence(atom1)
+        nfreebonds2=EmptyValence(atom2)
+        if nfreebonds2<nfreebonds1: nfreebonds1=nfreebonds2
+        assert nfreebonds1>0
+        order=random.randrange(1,nfreebonds1+1)
+        mol.AddBond(atom1.GetIdx(), atom2.GetIdx() , bondorder[order])
+        return mol
+    # if here, mutation failed
+    raise MutateFail()
+
+
+########################################################
+# Remove a bond. Obviously, the bond must be in a cycle,
+# or the molecule would be rent in twain
+#@captureMolExceptions
+def RemoveBond(mol, bond):
+    if bond.HasProp('group'):
+        raise MutateFail(mol,'Protected bond (in group) passed to RemoveBond.')
+    if not bond.IsInRing():
+        raise MutateFail(mol,'Non-ring bond passed to RemoveBond')
+    mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+    return mol
+
+#################################################################
+# Add an atom, either in a bond, or on a side-chain or terminus
+#@captureMolExceptions
+def AddAtom(mol, obj):
+    # If passed a bond, insert an atom into it
+    if type(obj)==Chem.Bond:
+        if obj.HasProp('group'): raise MutateFail(mol,
+            'Grouped bond passed to AddAtom')
+        # note that we really nead the atoms here because the Idx may change
+        # after adding a new atom to the molecule
+        atom1=obj.GetBeginAtom()
+        atom2=obj.GetEndAtom()
+        mol.RemoveBond(atom1.GetIdx(), atom2.GetIdx())
+        newatomid = mol.AddAtom(Chem.Atom(6))
+        mol.AddBond(atom1.GetIdx(), newatomid, bondorder[1])
+        mol.AddBond(atom2.GetIdx(), newatomid, bondorder[1])
+
+    #Otherwise, make a new sidechain (or add a terminal atom)
+    elif type(obj)==Chem.Atom and EmptyValence(obj)>0:
+        if obj.HasProp('protected'):
+            raise MutateFatal(mol,'Trying to add atom to protected atom.')
+        newatomid = mol.AddAtom(Chem.Atom(6))
+        mol.AddBond(obj.GetIdx(), newatomid, bondorder[1])
+    else:
+        raise MutateFail()
+    return mol
+
+#@captureMolExceptions
+def RemoveAtom(mol,atom):
+    #
+    # Deal with special groups
+    #
+    if atom.HasProp('protected') or atom.HasProp('fixed'):
+        raise MutateFatal(mol,'Protected or fixed atom passed to'+
+                          " RemoveAtom.")
+
+    # If atom is the representative of a larger group (e.g. N in nitro group)
+    # delete the entire group
+    if atom.HasProp('grouprep'):
+        groupnum=atom.GetProp('group')
+        RemoveGroup(mol, groupnum)
+
+    #If there's only one atom, refuse to remove it
+    if len(atom.GetNeighbors())==0:
+        raise MutateFail(mol)
+
+    #Remove a terminal atom:
+    elif len(atom.GetNeighbors())==1:
+        for bond in atom.GetBonds():
+            mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+        mol.RemoveAtom(atom.GetIdx())
+
+    #Remove an in-chain atom:
+    elif len(atom.GetNeighbors())==2:
+        nbr=[]
+        for neighb in atom.GetNeighbors():
+            nbr.append(neighb)
+        for bond in atom.GetBonds():
+            mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+
+        mol.RemoveAtom(atom.GetIdx())
+        mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
+
+    #Remove a 3-bond atom:
+    elif len(atom.GetNeighbors())==3:
+        nbr=[]
+        nbrCarbon=[]
+        nChoice=3
+        for neighb in atom.GetNeighbors():
+            nbr.append(neighb)
+            if neighb.GetAtomicNum()==6 and \
+                   len(neighb.GetNeighbors())==3:
+                nChoice=nChoice+1
+                nbrCarbon.append(neighb)
+        choose=random.randrange(0,nChoice,1)
+        for bond in atom.GetBonds():
+            mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetBeginAtomIdx())
+        mol.RemoveAtom(atom.GetIdx())
+        if choose==0:
+            mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
+            mol.AddBond(nbr[1].GetIdx(), nbr[2].GetIdx(), bondorder[1])
+        elif choose==1:                                   
+            mol.AddBond(nbr[0].GetIdx(), nbr[2].GetIdx(), bondorder[1])
+            mol.AddBond(nbr[2].GetIdx(), nbr[1].GetIdx(), bondorder[1])
+        elif choose==2:                                   
+            mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
+            mol.AddBond(nbr[2].GetIdx(), nbr[0].GetIdx(), bondorder[1])
+        else:
+            for neighb in nbr:
+                if not neighb.GetIdx()==nbrCarbon[choose-3].GetIdx():
+                    mol.AddBond(neighb.GetIdx() ,nbrCarbon[choose-3].GetIdx(), bondorder[1])
+
+    #Remove a 4-bond atom
+    elif len(atom.GetNeighbors())==4:
+        nbr=[]
+        for neighb in atom.GetNeighbors():
+            nbr.append(neighb)
+        for bond in atom.GetBonds():
+            mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+        mol.RemoveAtom(atom.GetIdx())
+        n1=nbr.pop(random.randrange(0,4,1))
+
+        if random.random()<0.75: #XA4 -> A-A-A-A
+            n2=nbr.pop(random.randrange(0,3,1))
+            mol.AddBond(n1.GetIdx(), n2.GetIdx(), bondorder[1])
+            n3=nbr.pop(random.randrange(0,2,1))
+            mol.AddBond(n2.GetIdx(), n3.GetIdx(), bondorder[1])
+            mol.AddBond(n3.GetIdx(), nbr[0].GetIdx(), bondorder[1])
+        else: #XA4 -> A(A3)
+            for neighb in nbr: mol.AddBond(n1.GetIdx(), neighb.GetIdx(), bondorder[1])
+
+
+    #Make sure nothing is bonded twice
+    oldpairs=[]
+    todelete=[]
+    for bond in mol.GetBonds():
+        pair=[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
+        pair.sort()
+        if pair in oldpairs: todelete.append(bond)
+        else: oldpairs.append(pair)
+    for bond in todelete:
+        mol.RemoveBond(bond.GetIdx())
+
+    # Make sure bonding makes sense
+    for atom in mol.GetAtoms():
+      try:
+        if EmptyValence(atom)<0:
+            for bond in atom.GetBonds():
+                if not bond.HasProp('group'): bond.SetBondType(bondorder[1])
+            if EmptyValence(atom)<0: raise MutateFail(mol)
+      except KeyError: raise MutateFail(mol)
+
+    return mol
+
