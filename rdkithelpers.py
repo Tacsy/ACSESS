@@ -2,6 +2,8 @@
 #-*- coding: utf-8 -*-
 
 from rdkit import Chem
+import traceback
+debug=False
 
 bondorder={ 1:Chem.BondType.SINGLE,
             2:Chem.BondType.DOUBLE,
@@ -9,9 +11,16 @@ bondorder={ 1:Chem.BondType.SINGLE,
 
 ############ FROM CANONICAL #############################
 def Finalize(mol):
-    Chem.SanitizeMol(mol)
+    if type(mol)==Chem.RWMol:
+        RW=True
+    else:RW=False
+    try: Chem.SanitizeMol(mol)
+    except Exception as e:
+        if debug:
+            for item in traceback.extract_stack(): print item
+        print "Error in Finalize with", Chem.MolToSmiles(mol), e
+    #Chem.SetAromaticity(mol)
     ResetProps(mol)
-    Chem.SetAromaticity(mol)
     return
 
 def ResetProps(mol):

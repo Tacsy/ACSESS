@@ -9,6 +9,8 @@ from molfails import MutateFail
 import mprms
 
 MAXTRY=100
+
+debug=False
 ###############################################
 # Initialization the module
 ###############################################
@@ -35,12 +37,10 @@ def GetFragment(mol):
     #print "in get fragment with:", Chem.MolToSmiles(mol)
     tried=[]
     for itry in xrange(MAXTRY):
-        #frag=mol.CreateCopy()
-        frag=Chem.Mol(mol)
-        frag.ClearComputedProps()
+        frag=Chem.RWMol(mol)
+        #frag.ClearComputedProps()
         ResetProps( frag )
 
-        
         #Cut an acyclic bond to break molecule in 2
         # get the ring bond ids. this gives a tuple of tuple for every ring
         ringbondids = frag.GetRingInfo().BondRings()
@@ -49,21 +49,21 @@ def GetFragment(mol):
         # get all the bonds that are NOT ringbonds or already tried
         bonds = [ bond for bond in mol.GetBonds() if bond.GetIdx() not in tried+ringbondids ]
         if len(bonds)==0: break
+        if debug: print "CX0",
         # choose a bond
         delbond=random.choice(bonds)
         tried.append( delbond.GetIdx() )
         # get atom indices of the bond
         i, j = ( delbond.GetBeginAtomIdx(), delbond.GetEndAtomIdx() )
 
-        # convert mol to an editable mol to be able to remove the bond
-        #em = Chem.EditableMol(frag)
-        em = Chem.RWMol(frag)
-        em.RemoveBond(i,j)
-        try:
-            Chem.SanitizeMol(em)
-        except ValueError: continue
+        frag.RemoveBond(i,j)
         # get new fragments as two new normal Mol objects
-        frags = Chem.GetMolFrags(em.GetMol(), asMols=True)
+        try:
+            frags = Chem.GetMolFrags(frag, asMols=True)
+        except ValueError:
+            print "frag:", Chem.MolToSmiles(frag)
+            print "mol:", Chem.MolToSmiles(mol)
+            raise SystemExit('in CX')
         molfrags = [Chem.MolToSmiles(x,True) for x in frags]
         if len(frags)<2:
             #print "only one frag"
@@ -88,6 +88,7 @@ def Crossover(m1, m2):
     #Fragment molecules
     m1fs=GetFragment(m1)
     m2fs=GetFragment(m2)
+    if debug: print "CX1",
     #print "in Crossover:", m1fs, m2fs
 
     #pick fragments for crossover checking:
@@ -118,6 +119,7 @@ def Crossover(m1, m2):
     # but what happens here?
     mol1.SetProp('parent1', m1.GetProp('isosmi'))
     mol2.SetProp('parent2', m2.GetProp('isosmi'))
+    if debug: print "CX2",
 
     '''
     if mol1.HasProp('groups'):
@@ -159,15 +161,19 @@ def Crossover(m1, m2):
     if len(possibleA1)==0 or len(possibleA2)==0:
         #print "no possible atoms!"
         raise MutateFail()
+    if debug: print "CX3",
     newmolRW = Chem.RWMol(newmol)
     atom1 = random.choice(possibleA1)
     atom2 = random.choice(possibleA2)
     newmolRW.AddBond( atom1.GetIdx(), atom2.GetIdx(), Chem.BondType.SINGLE )
+    if debug: print "CX4",
 
     #print "new mol!", Chem.MolToSmiles(newmolRW)
     mol = newmolRW.GetMol()
     try: Chem.SanitizeMol(mol)
     except: raise MutateFail()
+    if debug: print "CX5",
+    if Chem.MolToSmiles(mol)=='O=c1[nH][nH]ccc1=S': print "HERE CX!"
     return mol
 
 
@@ -398,24 +404,33 @@ def RemoveAtom(mol,atom):
         raise MutateFail(mol)
 
     #Remove a terminal atom:
-    elif len(atom.GetNeighbors())==1:
+    elif atom.GetDegree()==1:
         for bond in atom.GetBonds():
             mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
         mol.RemoveAtom(atom.GetIdx())
+ 
+    # until here it seems fine
 
     #Remove an in-chain atom:
-    elif len(atom.GetNeighbors())==2:
+    #
+    #NOT WORKING WELL
+    elif atom.GetDegree()==2:
+        #try:
+        #    Chem.Kekulize(mol) # to not remove atoms from aromatic rings
+        #except Exception as e: print Chem.MolToSmiles(mol)
+        #print Chem.MolToSmiles(mol, True)
         nbr=[]
         for neighb in atom.GetNeighbors():
             nbr.append(neighb)
         for bond in atom.GetBonds():
             mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
-
         mol.RemoveAtom(atom.GetIdx())
         mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
+        Chem.SetAromaticity(mol)
+
 
     #Remove a 3-bond atom:
-    elif len(atom.GetNeighbors())==3:
+    elif atom.GetDegree()==3:
         nbr=[]
         nbrCarbon=[]
         nChoice=3
@@ -444,7 +459,7 @@ def RemoveAtom(mol,atom):
                     mol.AddBond(neighb.GetIdx() ,nbrCarbon[choose-3].GetIdx(), bondorder[1])
 
     #Remove a 4-bond atom
-    elif len(atom.GetNeighbors())==4:
+    elif atom.GetDegree()==4:
         nbr=[]
         for neighb in atom.GetNeighbors():
             nbr.append(neighb)
@@ -483,5 +498,9 @@ def RemoveAtom(mol,atom):
             if EmptyValence(atom)<0: raise MutateFail(mol)
       except KeyError: raise MutateFail(mol)
 
-    return mol
+    if True:
+        try:
+            Chem.SanitizeMol(mol)
+        except: print "in Remove Atom with:", Chem.MolToSmiles(mol, True)
+        return mol
 

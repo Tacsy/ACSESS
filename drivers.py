@@ -20,10 +20,19 @@ RingRemove=0.2 #actual probability=.8*.3=.24
 MutateStereo=False
 StereoFlip=0.2
 
+debug=True
+
+def Sane(mol):
+    try:
+        Chem.SanitizeMol(mol)
+        return True
+    except:
+        return False
 
 def DriveMutations(lib):
     nDups, nExcp, nCand=(0,0,0)
     # 1. CROSSOVERS:
+    if debug: print "crossovers..."
     newmols=[]
     for i in xrange( min(mprms.nCross, len(lib)-1) ):
         try:
@@ -34,15 +43,19 @@ def DriveMutations(lib):
                 mol1=random.choice(lib+newmols)
                 mol2=random.choice(lib+newmols)
             candidate=mutate.Crossover(mol1,mol2)
+            if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
             Finalize(candidate)
             newmols.append(candidate)
             nCand+=1
         except MutateFail: nExcp+=1
+    newmols=filter(Sane, newmols)
+
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
     nDups+=nbefore-len(newmols)
 
     # 2. MUTATIONS
+    if debug: print "mutations..."
     for i in xrange(mprms.nMut):
         if i<mprms.nMut*mprms.EdgeRatio and mprms.EdgeLen>0:
             candidate=Chem.Mol(random.choice(lib[:mprms.EdgeLen]))
@@ -50,16 +63,25 @@ def DriveMutations(lib):
             candidate=Chem.Mol(random.choice(lib+newmols))
         try:
             candidate=MakeMutations(candidate)
+            if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
+            Finalize(candidate)
             newmols.append(candidate)
             nCand+=1
         except MutateFail: nExcp+=1
+    newmols=filter(Sane, newmols)
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
     nDups+=nbefore-len(newmols)
 
+    if "O=c1[nH][nH]ccc1=S" in map(Chem.MolToSmiles, newmols):
+        print "20"
+    if "ccc(cc(c)CC)COC" in map(Chem.MolToSmiles, newmols):
+        print "20b"
+
     return newmols
 
 def DriveFilters(lib):
+    print "filtering...", 
 
     # filter by setting the failed attribute True
     for mol in lib:
@@ -70,6 +92,12 @@ def DriveFilters(lib):
     # effective filter step. 
     newmols=filter(lambda mol:not mol.GetBoolProp('failed'), lib)
     return newmols
+
+def DriveObjective(newlib, pool, gen, mprms):
+    newlib, pool = obbjective.RankAndCutCompounds(newlib + pool,
+                                     gen,mprms.SubsetSize,mprms.nGens)
+    newlib.sort( key=lambda x:x.GetData('Objective'), reverse=not ob.minimize)
+    return newlib, pool
 
 def ExtendPool(pool, lib, newmols):
     return lib+newmols
@@ -118,10 +146,14 @@ def RemoveDuplicates(lib):
 #@captureMolExceptions
 def MakeMutations(candidate):
     candidate=SingleMutate(candidate)
+    if "O=c1[nH][nH]ccc1=S"==Chem.MolToSmiles(candidate):
+        print "16"
     #candidate,trimmed = TrimAtoms(candidate)
     #if MutateStereo: FlipStereo(candidate)
     try:
         Finalize(candidate)
+        if "O=c1[nH][nH]ccc1=S"==Chem.MolToSmiles(candidate):
+            print "17"
     except ValueError:
         print Chem.MolToSmiles(candidate)
 
@@ -164,12 +196,13 @@ def SingleMutate(candidateraw):
     # 1. bond-flip:
     bonds=list( GetBonds(candidate, notprop='group') )
     if random.random()<bondflip and len(bonds)>0:
+        if debug: print "1",
         nFlip+=1
         try:
             try:
                 mutate.FlipBond(candidate,random.choice(bonds))
-                change=True
                 Finalize(candidate)
+                return candidate
             except: raise MutateFail
         except MutateFail:
             nFlipFail+=1
@@ -177,29 +210,34 @@ def SingleMutate(candidateraw):
     # 2. Flip atom identity
     atoms=filter(CanChangeAtom, candidate.GetAtoms())
     if random.random()<atomflip and len(atoms)>0:
+        if debug: print "2",
         nAtomType+=1
         try:
             mutate.SwitchAtom(candidate,random.choice(atoms))
-            change=True
-            try: Finalize(candidate)
-            except: raise MutateFail
+            try: 
+                Finalize(candidate)
+            except:
+                raise MutateFail
+            return candidate
         except MutateFail:
             nAtomTypeFail+=1
 
     # 3. add a ring - either a new aromatic ring, or bond
     # Aromatic ring addition disabled - probably not necessary
     if random.random()<ringadd:
+        if debug: print "3",
         nNewRing+=1
         try:
             mutate.AddBond(candidate)
             try: Finalize(candidate)
             except: raise MutateFail
-            #return candidate
+            return candidate
         except MutateFail:
             nNewRingFail+=1
 
     # 4. Try to remove a bond to break a cycle
     if random.random() < RingRemove:
+        if debug: print "4",
         bondringids = candidate.GetRingInfo().BondRings()
         # need to flatten bondringids:
         if bondringids:
@@ -212,7 +250,7 @@ def SingleMutate(candidateraw):
             mutate.RemoveBond(candidate,random.choice(bonds))
             try: Finalize(candidate)
             except: raise MutateFail
-            #return candidate
+            return candidate
         else:
             nBreakFail+=1
 
@@ -220,25 +258,27 @@ def SingleMutate(candidateraw):
     atoms = GetAtoms(candidate, notprop='protected')
     bonds = GetBonds(candidate, notprop='group'    )
     if ( random.random() < AddFreq and len(atoms)+len(bonds)>0 ):
+        if debug: print "5",
         nAdd+=1
         try:
             mutate.AddAtom(candidate,random.choice(atoms+bonds))
             try: Finalize(candidate)
             except: raise MutateFail
-            #return candidate
+            return candidate
         except MutateFail:
             nAddFail+=1
 
     # 6. remove an atom
     atoms= filter(CanRemoveAtom, candidate.GetAtoms())
     if len(atoms)>1 and random.random() < DelFreq:
+        if debug: print "6",
         nRemove+=1
         try:
             try:
-                mutate.RemoveAtom(candidate,random.choice(atoms))
+                #mutate.RemoveAtom(candidate,random.choice(atoms))
                 Finalize(candidate)
             except: raise MutateFail
-            #return candidate
+            return candidate
         except MutateFail:
             nRemoveFail+=1
 
@@ -247,6 +287,8 @@ def SingleMutate(candidateraw):
     #if not change:
     #    nNoMutation+=1
     #    raise MutateFail()
+    if Chem.MolToSmiles(candidate)=='O=c1[nH][nH]ccc1=S': print "HERE!"
+    #if Chem.MolToSmiles(candidate)=='ccc(cc(c)CC)COC': print "HERE!b"
     if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
     return candidate
 

@@ -10,6 +10,24 @@ import mprms
 # and store them all in StoredParams.py 
 ######################################################
 def ReadMPRMS():
+
+    def SetModVal(name,ModAssign):
+        if hasattr(mprms,name):
+            if not restart: print>> myopts,name+'='+str(getattr(mprms,name))
+            setattr(ModAssign,name,
+                    getattr(mprms,name) )
+    def SetMPRMDefault(name,value):
+        if not hasattr(mprms,name):
+            setattr(mprms,name,value)
+        else:
+            if not restart: print >> myopts,name+'='+str(getattr(mprms,name))
+
+    if hasattr(mprms, 'rseed'):
+        import random
+        random.seed(mprms.rseed)
+    if not hasattr(mprms, 'optimize'):
+        mprms.optimize=False
+
     mprms.MxAtm=50
     mprms.EdgeRatio=0.1
     mprms.EdgeLen=10
@@ -18,6 +36,8 @@ def ReadMPRMS():
     mutate.MutateInit()
     import filters
     filters.FilterInit()
+
+
     return
 
 

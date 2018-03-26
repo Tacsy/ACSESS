@@ -8,7 +8,7 @@ debug=True
 ##############################
 # Import statements
 ##############################
-import sys
+import sys, random
 from rdkit import Chem
 sys.path.append('.')
 import mprms
@@ -75,10 +75,17 @@ for gen in xrange(startiter, mprms.nGen):
     # FILTERS
     newlib = dr.DriveFilters(newlib)
 
+    # OBJECTIVE
+    if mprms.optimize:
+        newlib, pool= dr.DriveObjective(newlib, pool, gen, mprms)
+
     # Select Diverse Set
+    print "selecting..."
     pool = dr.ExtendPool(pool, lib, newlib)
+
     if len(pool)>mprms.subsetSize:
-        lib = [ mol for mol in pool[-mprms.subsetSize:]]
+        #lib = [ mol for mol in pool[-mprms.subsetSize:]]
+        lib = random.sample(pool, mprms.subsetSize)
         #raise NotImplementedError(0)
         #lib = Maximin(pool)
     else:

@@ -33,6 +33,7 @@ Some clearification:
 
 ActiveFilters = dict()
 FilterFlavor = 'GDB'
+extrafilters = []
 MAXTRY=10
 
 ############################################################
@@ -50,6 +51,11 @@ def FilterInit():
     # filterfunction might be a filterclass with a __call__ attribute though.
     # {'filtername1':filterfunction1, 'filtername2':filterfunction2, ... }
     ActiveFilters.update(FilterFlavor.AllFilters)
+    if extrafilters:
+        from Filters.ExtraFilters import ExtraFilters
+        for extrafilter in extrafilters:
+            ActiveFilters[extrafilter]=ExtraFilters[extrafilter]
+        print "{} added".format(extrafilter)
     print "ActiveFilters:", ActiveFilters
 
     return
@@ -169,21 +175,6 @@ class NewPatternFilter(NewFilter):
                 if len(matches)==0: break
             if len(matches)==0: break
         return matches
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ensure molecule has specific pattern
 def CheckSubstructure(mol, patterns):

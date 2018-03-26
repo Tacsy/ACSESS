@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 from filters import NewFilter, NewPatternFilter
 from rdkit import Chem

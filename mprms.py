@@ -11,6 +11,7 @@ This is the parameter file containing essential parameters for ACSESS to parse
 
 # input seedfile, can be filename, or None
 seedFile = 'mols.smi'
+rseed = 2
 
 ##############
 ### output ###
@@ -25,7 +26,7 @@ writeInterval = 2
 
 restart = False
 # run for 1000 generations
-nGen = 25
+nGen = 10
 # create 40 mutants each generation
 nMut = 40
 # create 50 crossovers each generation
@@ -40,8 +41,8 @@ startFilter = 100
 edgeLen = 10
 # first 10% of mutations will be only of most diverse 10 compounds
 edgeRatio = 0.1
-# cap molecular weight at 500 Daltons
-maxWeight = 500
+# cap molecular weight at 300 Daltons
+maxWeight = 300
 
 ##############
 ### mutate ###
@@ -72,3 +73,9 @@ canonicalTautomer = True
 genStruc = True
 # open filters
 qiuFilter = False
+
+###############
+### filters ###
+###############
+
+extrafilters = []
