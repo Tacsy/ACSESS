@@ -14,6 +14,7 @@ sys.path.append('.')
 import mprms
 import init
 import drivers as dr
+import output
 
 ##############################
 # Check input
@@ -95,4 +96,7 @@ for gen in xrange(startiter, mprms.nGen):
         with open('mylib','w') as f:
             for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')
 
+    output.PrintTimings()
+
+output.PrintTotalTimings()
 print "DONE"

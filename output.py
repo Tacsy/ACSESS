@@ -5,6 +5,7 @@ import time
 import sys
 
 startTime = time.time()
+debug=False
 
 ##########################
 # Statistics function
@@ -55,7 +56,20 @@ def EndTimer(key):
     else:
         timings[key] = runTime
 
-def PrintTimings(nColumn, flush = True):
+from functools import wraps
+def logtime():
+    def decorate(f):
+        @wraps(f)
+        def wrapped(*args,**kwargs):
+            name = f.__name__.replace('Drive',' ')
+            StartTimer(name)
+            r = f(*args,**kwargs)
+            EndTimer(name)
+            return r
+        return wrapped
+    return decorate
+
+def PrintTimings(nColumn=4, flush = True):
     global timings, totalTimes
     keys = timings.keys()
     if len(keys) == 0:
@@ -75,7 +89,7 @@ def PrintTimings(nColumn, flush = True):
     debug part should be considered
     '''
 
-def PrintTotalTimings(nColumn):
+def PrintTotalTimings(nColumn=4):
     global totalTimes
     print totalTimingHead
     if len(totalTimes) == 0:
@@ -87,7 +101,7 @@ def PrintTotalTimings(nColumn):
 # Printing function
 ##########################
 
-def PrintDcit(mydict, nColumn, truncate = False, sort = False):
+def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
     if sort != False:
         if sort == 'val':
             idx = 1
@@ -113,7 +127,7 @@ def PrintDcit(mydict, nColumn, truncate = False, sort = False):
     valformat = ''
     for i in xrange(nColumn):
         keyformat += '+--{:<15}--'
-        valformat += '|  {:<15}}  '
+        valformat += '|  {:<15}  '
     keyformat += '+'
     valformat += '|'
 

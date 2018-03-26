@@ -9,6 +9,7 @@ import mutate
 import filters
 import mprms
 import random
+from output import logtime
 
 ###### mutation probabilities:
 bondflip=0.8
@@ -29,6 +30,7 @@ def Sane(mol):
     except:
         return False
 
+@logtime()
 def DriveMutations(lib):
     nDups, nExcp, nCand=(0,0,0)
     # 1. CROSSOVERS:
@@ -80,6 +82,7 @@ def DriveMutations(lib):
 
     return newmols
 
+@logtime()
 def DriveFilters(lib):
     print "filtering...", 
 
@@ -93,15 +96,16 @@ def DriveFilters(lib):
     newmols=filter(lambda mol:not mol.GetBoolProp('failed'), lib)
     return newmols
 
+@logtime()
 def DriveObjective(newlib, pool, gen, mprms):
     newlib, pool = obbjective.RankAndCutCompounds(newlib + pool,
                                      gen,mprms.SubsetSize,mprms.nGens)
     newlib.sort( key=lambda x:x.GetData('Objective'), reverse=not ob.minimize)
     return newlib, pool
 
+@logtime()
 def ExtendPool(pool, lib, newmols):
     return lib+newmols
-
 
 
 ############ EXTRA FUNCTIONS: #############
