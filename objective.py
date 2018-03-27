@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import os
 import mprms
+from rdkit import Chem
 
 minimize=False #Minimizing or maximizing the objective function?
 compGeom=False #Does objective function require 3d structure?
@@ -12,6 +13,7 @@ TargetScore=None
 TargetScoreOss=None
 NeighborhoodMaximin=True
 FixedCutoff=False
+InitialCutoff=0.0
 TakeFittest=0
 SaturateAt=0.8
 NeighborhoodFactor=0.75
@@ -75,18 +77,19 @@ def UpdateObjective(mylib, gen=0):
 # Returns both picked compounds (as library) and unpicked compounds (as pool)
 def EvaluateObjective(totallib, gen):
     nGen     = mprms.nGen
+    NumIn    = len(totallib)
 
     # 1. do actual objective evaluation
     UpdateObjective(totallib, gen)
     # Sort compounds by fitness
-    totallib.sort(key=lambda x: x.GetData('Objective'),reverse=not minimize)
+    totallib.sort(key=lambda x: x.GetDoubleProp('Objective'),reverse=not minimize)
          
     # 2. Cut compounds below cutoff
     if gen>SaturateAt*nGen:
         cutoff=TargetScore
     else:
         cutoff=InitialCutoff + (TargetScore-InitialCutoff)*( gen*1.0)/(nGen*SaturateAt)
-    newpool = [ mol for mol in totallib if mol.GetData('Objective')*minsign <= cutoff*minsign ]
+    newpool = [ mol for mol in totallib if mol.GetDoubleProp('Objective')*minsign <= cutoff*minsign ]
     NumOut=len(newpool)
     if NumOut==0:
         raise ValueError('No compounds left after cutoff!')
@@ -102,8 +105,8 @@ def SelectFittest(newpool, SubsetSize):
 
         dt.ScatterCoords( pool )
 
-        coords=np.array( [ mol.GetData('coords') for mol in pool ] )
-        scores=np.ma.array( [mol.GetData('Objective') for mol in pool] )
+        coords=np.array( [ mol.GetProp('coords') for mol in pool ] )
+        scores=np.ma.array( [mol.GetDoubleProp('Objective') for mol in pool] )
 	if sumhelper is None: sumhelper=np.ones(len(coords[0]))
 
         #Allows you to do pure Fitness based selection
@@ -121,7 +124,7 @@ def SelectFittest(newpool, SubsetSize):
         oput.EndTimer('NN DIST CALC')
 
         print 'Average libary score before optimization: ',sum(
-            m.GetData('Objective') for m in templib )/(
+            m.GetDoubleProp('Objective') for m in templib )/(
             1.0*len(templib)),'(diversity:',AveDistSqr,')'
         
         ############################ NEIGHBORHOOD MAXIMIN ##################
@@ -138,7 +141,7 @@ def SelectFittest(newpool, SubsetSize):
 
         ######### MAIN LOOP #########
         for ipick in picks:
-            myscore=pool[ipick].GetData('Objective')
+            myscore=pool[ipick].GetDoubleProp('Objective')
             #Skip compounds already at target
             if myscore*minsign <= TargetScore*minsign:
                 newlib.append( pool[ipick] )
@@ -179,7 +182,7 @@ def SelectFittest(newpool, SubsetSize):
 
         #####
         #Done with optimizing maximin
-        newlib.sort(key=lambda x: x.GetData('Objective'),reverse=not minimize)
+        newlib.sort(key=lambda x: x.GetDoubleProp('Objective'),reverse=not minimize)
         print 'swapped',nSwap,'/',len(newlib),'compounds'
         print 'Average libary score after optimization: ',
         
@@ -189,7 +192,7 @@ def SelectFittest(newpool, SubsetSize):
        mostfit=[]
 
     #Print statisticals
-    fvals1= np.array( [ mol.GetData('Objective') for mol in newlib+mostfit] )
+    fvals1= np.array( [ mol.GetDoubleProp('Objective') for mol in newlib+mostfit] )
     print "fvals1:", fvals1
 
     print>>simstats,fitnessformat.format(gen,NumIn,NumOut,
@@ -200,6 +203,6 @@ def SelectFittest(newpool, SubsetSize):
     simstats.flush()
 
     newlib += mostfit
-    newlib.sort( key=lambda x:x.GetData('Objective'), reverse=not ob.minimize)
+    newlib.sort( key=lambda x:x.GetDoubleProp('Objective'), reverse=not ob.minimize)
     return newlib, newpool
 

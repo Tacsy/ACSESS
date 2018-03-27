@@ -84,7 +84,7 @@ def calculate(rdmols, run, QH2=False, gen=0):
 
     #4. set the results as attributes from the rdmols
     for mol in mols:
-        mol.rdmol.SetData('Objective', float(mol.Pvalue))
+        mol.rdmol.SetDoubleProp('Objective', float(mol.Pvalue))
 
     from CINDES.INDES.loggings import log_table
     print "logging table..."

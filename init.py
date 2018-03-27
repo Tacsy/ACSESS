@@ -10,7 +10,7 @@ import mprms
 # and store them all in StoredParams.py 
 ######################################################
 def ReadMPRMS():
-    primitiveTypes=(str, float, bool, int, list, tuple)
+    primitiveTypes=(str, float, bool, int, list, tuple, type(None))
     normalvar = lambda var:type(var) in primitiveTypes
     notbuiltin= lambda var:not var.startswith('_')
     def goodvar(var, mod):return notbuiltin(var) and normalvar(getattr(mod, var))
@@ -49,6 +49,7 @@ def ReadMPRMS():
             # check if mprms has same attr:
             if hasattr(mprms, modvar):
                 #than change it:
+                print "for module {} setting attr {}".format(module, modvar)
                 setattr(_Mod, modvar, getattr(mprms, modvar))
 
         # initialize module if it has a Init function
