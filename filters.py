@@ -4,8 +4,9 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from molfails import MutateFail
+from rdkithelpers import *
 
-
+debug=False
 '''
 This filter.py contains all the possible filters in the previous version of
 ACSESS, in order to make the code in the cleaner way.
@@ -40,7 +41,7 @@ MAXTRY=10
 #       Functions from Filter.py
 ############################################################
 
-def FilterInit():
+def Init():
     global ActiveFilters, FilterFlavor
 
     if FilterFlavor=='GDB':
@@ -61,27 +62,25 @@ def FilterInit():
     return
 
 def FixAndFilter(mol):
-
-    # HERE AN EXTRY MAXTRY LAYER SHOULD BE ADDED AS IN THE OLD VERSION.
-    # THIS IS JUST TO TEST
     changed=False
     failure=False
     for _ in xrange(MAXTRY):
         # in old version: here prepare for 2D filters
-
         # run through all filters:
         for filtername in ActiveFilters:
             failure = ActiveFilters[filtername](mol)
             if failure:
+                if debug: print "in F&F:", failure
                 try:
                     success= ActiveFilters[filtername].Fix(mol)
                 except MutateFail:
                     success=False
                     changed=True
-                if not success: return changed, failure
+                if not success:
+                    return changed, failure
                 else:
                     changed=True
-                    #cn.Finalize(mol)
+                    Finalize(mol)
                     break
         if not failure: break #i.e. all filters passed without problems
     return changed, failure

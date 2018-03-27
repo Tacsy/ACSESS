@@ -15,7 +15,7 @@ debug=False
 # Initialization the module
 ###############################################
 
-def MutateInit():
+def Init():
     elements = mprms.elements
     halogens = [9,17,35,53]
     global elements, halogens
@@ -63,7 +63,7 @@ def GetFragment(mol):
         except ValueError:
             print "frag:", Chem.MolToSmiles(frag)
             print "mol:", Chem.MolToSmiles(mol)
-            raise SystemExit('in CX')
+            break
         molfrags = [Chem.MolToSmiles(x,True) for x in frags]
         if len(frags)<2:
             #print "only one frag"

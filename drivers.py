@@ -55,6 +55,7 @@ def DriveMutations(lib):
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
     nDups+=nbefore-len(newmols)
+    if debug: print "nDups after CX:", nDups
 
     # 2. MUTATIONS
     if debug: print "mutations..."
@@ -74,6 +75,7 @@ def DriveMutations(lib):
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
     nDups+=nbefore-len(newmols)
+    if debug: print "nDups after MUs:", nDups
 
     if "O=c1[nH][nH]ccc1=S" in map(Chem.MolToSmiles, newmols):
         print "20"
@@ -83,28 +85,29 @@ def DriveMutations(lib):
     return newmols
 
 @logtime()
-def DriveFilters(lib):
+def DriveFilters(lib, doFilter=True):
     print "filtering...", 
 
     # filter by setting the failed attribute True
     for mol in lib:
         changed, failed = filters.FixAndFilter(mol)
-        #if changed: cn.Finalize(mol)
         mol.SetBoolProp('failed', bool(failed))
-
+        mol.SetBoolProp('filtered', True)
+        if failed in ['unknown', 'False'] or failed==True:
+            failed='unknown'
+        if failed:
+            mol.SetProp('failedfilter', failed)
+            print failed
+            filterFile.write(Chem.MolToSmiles(mol) + '  ' + failed + '\n')
     # effective filter step. 
     newmols=filter(lambda mol:not mol.GetBoolProp('failed'), lib)
+    filterFile.flush()
+
     return newmols
 
 @logtime()
-def DriveObjective(newlib, pool, gen, mprms):
-    newlib, pool = obbjective.RankAndCutCompounds(newlib + pool,
-                                     gen,mprms.SubsetSize,mprms.nGens)
-    newlib.sort( key=lambda x:x.GetData('Objective'), reverse=not ob.minimize)
-    return newlib, pool
-
-@logtime()
 def ExtendPool(pool, lib, newmols):
+    print "selecting..."
     return lib+newmols
 
 

@@ -15,6 +15,7 @@ import mprms
 import init
 import drivers as dr
 import output
+import objective
 
 ##############################
 # Check input
@@ -31,7 +32,7 @@ else:
 # Open output
 ##############################
 
-filterFile = open('filters.dat', openmode)
+dr.filterFile = open('filters.dat', openmode)
 convergeFile = open('convergence.dat', openmode)
 statsFile = open('stats.dat', openmode)
 coordsStdDev = open('stddev.dat', openmode)
@@ -62,40 +63,38 @@ startiter, lib, pool= init.StartLibAndPool(mprms.restart)
 ###################################################
 
 for gen in xrange(startiter, mprms.nGen):
+    # 1. PRELOGGING
     print iterhead.format(gen)
-
-    # PRELOGGING
     if debug:
         print "startiter:", startiter
         print "len lib:", len(lib)
         print "len pool:", len(pool)
 
-    # MUTATIONS
+    # 2.MUTATIONS AND CROSSOVERS
     newlib = dr.DriveMutations(lib)
 
-    # FILTERS
+    # 3. FILTERS
     newlib = dr.DriveFilters(newlib)
 
-    # OBJECTIVE
+    # 4. OBJECTIVE
     if mprms.optimize:
-        newlib, pool= dr.DriveObjective(newlib, pool, gen, mprms)
+        pool = objective.EvaluateObjective(newlib + pool, gen)
+    else:
+        pool = dr.ExtendPool(pool, lib, newlib)
 
-    # Select Diverse Set
-    print "selecting..."
-    pool = dr.ExtendPool(pool, lib, newlib)
-
-    if len(pool)>mprms.subsetSize:
-        #lib = [ mol for mol in pool[-mprms.subsetSize:]]
+    # 5. SELECTION
+    if mprms.optimize:
+        lib, pool = objective.SelectFittest(pool, mprms.subsetSize)
+    elif len(pool)>mprms.subsetSize:
         lib = random.sample(pool, mprms.subsetSize)
-        #raise NotImplementedError(0)
         #lib = Maximin(pool)
     else:
         lib = [ mol for mol in pool ]
 
+    # 6. POSTLOGGING
     if debug:
         with open('mylib','w') as f:
             for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')
-
     output.PrintTimings()
 
 output.PrintTotalTimings()

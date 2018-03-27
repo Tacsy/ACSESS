@@ -10,6 +10,10 @@ import mprms
 # and store them all in StoredParams.py 
 ######################################################
 def ReadMPRMS():
+    primitiveTypes=(str, float, bool, int, list, tuple)
+    normalvar = lambda var:type(var) in primitiveTypes
+    notbuiltin= lambda var:not var.startswith('_')
+    def goodvar(var, mod):return notbuiltin(var) and normalvar(getattr(mod, var))
 
     def SetModVal(name,ModAssign):
         if hasattr(mprms,name):
@@ -32,12 +36,25 @@ def ReadMPRMS():
     mprms.EdgeRatio=0.1
     mprms.EdgeLen=10
 
-    import mutate
-    mutate.MutateInit()
-    import filters
-    filters.FilterInit()
+    # Decide which modules have to be imported:
+    _modules = ['mutate', 'filters']
+    if mprms.optimize: _modules+= 'optimize'
 
+    # Import the modules / Set the global variables / Initiate modules
+    for module in _modules:
+        # get normal global variables of the modules
+        _Mod = __import__(module)
+        modvars = [ var for var in dir(_Mod) if goodvar(var, _Mod)]
+        for modvar in modvars:
+            # check if mprms has same attr:
+            if hasattr(mprms, modvar):
+                #than change it:
+                setattr(_Mod, modvar, getattr(mprms, modvar))
 
+        # initialize module if it has a Init function
+        if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
+            getattr(_Mod, 'Init')()
+    
     return
 
 
