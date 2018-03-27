@@ -34,7 +34,7 @@ atomNum = {'Ac': 89, 'Ag': 47, 'Al': 13, 'Am': 95, 'Ar': 18, 'As': 33, 'At': 85,
         'W': 74, 'Xe': 54, 'Y': 39, 'Yb': 70, 'Zn': 30, 'Zr': 40}
 elements = {}
 for element, num in atomNum.iteritems(): 
-    element[num] = element
+    elements[num] = element
 
 ########################################
 #       NON-CHEMICAL RELATED
@@ -169,12 +169,16 @@ def Compute3DCoords(mol):
     AllChem.EmbedMolecule(molAddH, AllChem.ETKDG())
 
     molStr = Chem.MolToMolBlock(molAddH)
+    print molStr
+
     #parse mol string file into list
     molCoords = []
     
     molStr2List = molStr.split('\n')
+
+    print "molStr2List:", molStr2List
     #get number of atoms
-    num = molStr2List[3].split()[0]
+    num = int(molStr2List[3].split()[0])
 
     for i in xrange(4,4+num):
         coords = molStr2List[i].split()[0:4]

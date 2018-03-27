@@ -38,7 +38,7 @@ def ReadMPRMS():
 
     # Decide which modules have to be imported:
     _modules = ['mutate', 'filters']
-    if mprms.optimize: _modules+= 'optimize'
+    if mprms.optimize: _modules.append('objective')
 
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:

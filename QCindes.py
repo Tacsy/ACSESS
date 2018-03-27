@@ -13,9 +13,9 @@ import numpy as np
 
 from rdkit import Chem
 
-import Struc3D as s3d
-s3d.UseBalloon=True
-s3d.S3DInit()
+from helpers import Compute3DCoords
+#s3d.UseBalloon=True
+#s3d.S3DInit()
 
 from CINDES.utils.molecule import SmiMolecule
 table=None
@@ -110,16 +110,11 @@ def xyzfromrdmol(rdmol):
     atomN={1:'H', 5:'B',6:'C',7:'N', 8:'O', 9:'F', 14:'Si', 15:'P', 16:'S', 17:'Cl', 35:'Br', 53: 'I'}
     with open('omega.out','a') as out:
         with custom_redirection(out):
-            s3d.GenGeom(rdmol, direct=False)
-    xyzmol=rdmol.GetProp('hasstructure')
-    cartesian=xyzmol.GetCoords()
-    xyz=[]
-    for atom in xyzmol.GetAtoms():
-        num=atom.GetIdx()
-        anum=atom.GetAtomicNum()
-        xyz.append(atomN[anum] + '  '+' '.join(map(str, cartesian[num])))
-    xyz='\n'.join(xyz)
-    xyz+= '\n\n'
+            molcoords = Compute3DCoords(rdmol)
+            reorder   = lambda xyz:"{3} {0} {1} {2}".format(*xyz)
+            cartesian = map(reorder, molcoords)
+            xyz       = "\n".join(cartesian)
+            xyz      += '\n\n'
     return xyz
 
 def xyzfromstring(string):
