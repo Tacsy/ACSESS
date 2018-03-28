@@ -55,7 +55,11 @@ def Init():
     if extrafilters:
         from Filters.ExtraFilters import ExtraFilters
         for extrafilter in extrafilters:
-            ActiveFilters[extrafilter]=ExtraFilters[extrafilter]
+            if extrafilter in ['Qiu', 'qiu']:
+                ActiveFilters['qiu1']=ExtraFilters['qiu1']
+                ActiveFilters['qiu2']=ExtraFilters['qiu2']
+            else:
+                ActiveFilters[extrafilter]=ExtraFilters[extrafilter]
         print "{} added".format(extrafilter)
     print "ActiveFilters:", ActiveFilters
 
@@ -175,6 +179,7 @@ class NewPatternFilter(NewFilter):
             if len(matches)==0: break
         return matches
 
+# THIS FUNCTION IS NOT USED YET!
 # ensure molecule has specific pattern
 def CheckSubstructure(mol, patterns):
     # get mol and return bool for filter or not
@@ -188,33 +193,3 @@ def CheckSubstructure(mol, patterns):
 
     return dumpMol
 
-############################################################
-#       Functions from QiuFilter.py
-############################################################
-
-# ensure molecule do not have ring with ring size N
-def CheckRingSize(mol, ringSize):
-    # get mol and return bool for filter or not
-        
-    dumpMol = False
-    # calculate smallest set of rings (SSR)
-    ssr = Chem.GetSymmSSSR(mol)
-    for i in range(len(ssr)):
-        if len(list(ssr[i])) == ringSize:
-            dumpMol = True
-
-    return dumpMol
-
-# ensure molecule do not have a bond with bondorder N
-def CheckBondOrder(mol, bondOrder):
-    # get mol and return bool for filter or not  
-    # bondOrder should be double, 1.0 for single, 1.5 for aromatic, 2.0 for
-    # double, 3.0 for triple
-
-    dumpMol = False
-    # loop over bonds in molecule and check bond order
-    for bond in mol.GetBonds():
-        if bond.GetBondTypeAsDouble() == bondOrder:
-            dumpMol = True
-
-    return dumpMol

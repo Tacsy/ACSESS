@@ -95,7 +95,18 @@ def StartLibAndPool(restart):
 
     #case 1: restart file ('itX.lib.gz')
     if restart:
-        pass
+        for i in reversed(xrange(mprms.nGen+1)):
+            filename= "it{}.smi".format(i)
+            if os.path.isfile(filename):
+                startiter=i+1
+                break
+        else: raise SystemExit('RESTART but no iteration files found')
+        supplier = Chem.SmilesMolSupplier(filename)
+        lib = [mol for mol in supplier]
+        setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
+        map(setisosmi, lib)
+        print 'RESTARTING calculation from iteration', startiter-1,
+        print 'with {} molecules'.format(len(lib))
     #case 2: read from mprms.seedfile
     elif hasattr(mprms, 'seedFile'):
         seedFile = mprms.seedFile

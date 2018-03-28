@@ -21,14 +21,23 @@ RingRemove=0.2 #actual probability=.8*.3=.24
 MutateStereo=False
 StereoFlip=0.2
 
+##### workflow switches:
+GenStrucs      = 0
+StartFiltering = 5
+StartTautomer  = 10
+StartGenStrucs = 20
+
 debug=True
 
-def Sane(mol):
-    try:
-        Chem.SanitizeMol(mol)
-        return True
-    except:
-        return False
+def SetIterationWorkflow(gen):
+    global GenStrucs
+    Tautomerizing = (gen>=StartTautomer)
+    #if Tautomerizing: cn.CanonicalTautomer=True
+
+    Filtering = (gen>= StartFiltering)
+    GenStrucs = (GenStrucs and gen>= StartGenStrucs)
+    return Tautomerizing, Filtering, GenStrucs
+
 
 @logtime()
 def DriveMutations(lib):
@@ -85,7 +94,8 @@ def DriveMutations(lib):
     return newmols
 
 @logtime()
-def DriveFilters(lib, doFilter=True):
+def DriveFilters(lib, Filter=True, GenStrucs=False):
+    if not (Filter or GenStrucs): return lib
     print "filtering...", 
 
     # filter by setting the failed attribute True
@@ -124,7 +134,7 @@ def GetScore(mol):
             score += bool(mol.GetProp(prop))
         except KeyError:
             pass
-    if not mol.HasProp('selected'): mol.SetBoolProp('selected', False)
+    if not mol.HasProp('selected'): mol.SetIntProp('selected', 0)
     return score
 
 def RemoveDuplicates(lib):
@@ -298,7 +308,6 @@ def SingleMutate(candidateraw):
     #if Chem.MolToSmiles(candidate)=='ccc(cc(c)CC)COC': print "HERE!b"
     if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
     return candidate
-
 
 
 

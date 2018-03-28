@@ -157,6 +157,26 @@ def Normalize(vec):
     n = np.sqrt(np.dot(vec, vec))
     return vec/n
 
+def DumpMols(lib, gen=None):
+    if gen is None:
+        filename = 'pool.smi'
+    else:
+        filename = 'it{}.smi'.format(gen)
+    w = Chem.SmilesWriter(filename)
+    for mol in lib:
+        w.write(mol)
+    return
+
+def FinishSelection(lib):
+    for i,mol in enumerate(lib):
+        try:
+            mol.SetIntProp('selected', mol.GetIntProp('selected')+1)
+        except KeyError:
+            # if mol doesn't have 'selected' set to 1
+            mol.SetIntProp('selected', 1)
+
+
+
 ########################################
 #       CHEMICAL RELATED
 ########################################

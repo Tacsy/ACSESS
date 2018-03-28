@@ -31,6 +31,13 @@ def ResetProps(mol):
     mol.SetProp('isosmi',isosmi)
     return
 
+def Sane(mol):
+    try:
+        Chem.SanitizeMol(mol)
+        return True
+    except:
+        return False
+
 ############ NEW RDKIT HELPERS: #########################
 def MolAtIsInGroup(mol, groupid):
     requirement = lambda atom:atom.HasProp('group') and atom.GetProp('group')==groupid
