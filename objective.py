@@ -97,8 +97,8 @@ def EvaluateObjective(totallib, gen):
 
     return newpool
 
-def SelectFittest(newpool, SubsetSize):
-    if len(newpool)>SubsetSize+TakeFittest:
+def SelectFittest(newpool, subsetSize):
+    if len(newpool)>subsetSize+TakeFittest:
         mostfit = newpool[0:TakeFittest]
         pool = newpool[TakeFittest:]   ###at this point pool is updated so that only compounds satisfying fitness stay
         nSwap=0
@@ -110,10 +110,10 @@ def SelectFittest(newpool, SubsetSize):
 	if sumhelper is None: sumhelper=np.ones(len(coords[0]))
 
         #Allows you to do pure Fitness based selection
-        if SubsetSize<=0: return mostfit,[],newpool
+        if subsetSize<=0: return mostfit,[],newpool
 
         #Select a sample subset
-        picks=dt.FastMaximin(coords,SubsetSize)
+        picks=dt.FastMaximin(coords,subsetSize)
         
         templib=[ pool[i] for i in picks ]
         if dt.NormCoords:

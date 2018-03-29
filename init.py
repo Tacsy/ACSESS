@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-import os
+import os, sys
+sys.path.append('.')
+sys.path.append('./Filters/')
 from rdkit import Chem 
 import mprms
+import importlib
 
 
 ######################################################
@@ -37,19 +40,21 @@ def ReadMPRMS():
     mprms.EdgeLen=10
 
     # Decide which modules have to be imported:
-    _modules = ['mutate', 'filters']
+    _modules = ['mutate', 
+                'filters', 'Filters.DefaultFilters',
+                'drivers' ]
     if mprms.optimize: _modules.append('objective')
 
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:
         # get normal global variables of the modules
-        _Mod = __import__(module)
+        _Mod = importlib.import_module(module)
         modvars = [ var for var in dir(_Mod) if goodvar(var, _Mod)]
         for modvar in modvars:
             # check if mprms has same attr:
             if hasattr(mprms, modvar):
                 #than change it:
-                print "for module {} setting attr {}".format(module, modvar)
+                print "set attr: {}.{}".format(module, modvar)
                 setattr(_Mod, modvar, getattr(mprms, modvar))
 
         # initialize module if it has a Init function

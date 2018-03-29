@@ -3,7 +3,7 @@
 
 from rdkit import Chem
 import traceback
-debug=False
+debug=True
 
 bondorder={ 1:Chem.BondType.SINGLE,
             2:Chem.BondType.DOUBLE,
@@ -39,6 +39,7 @@ def Sane(mol):
         return False
 
 ############ NEW RDKIT HELPERS: #########################
+flatten = lambda X:tuple(set(i for x in X for i in x))
 def MolAtIsInGroup(mol, groupid):
     requirement = lambda atom:atom.HasProp('group') and atom.GetProp('group')==groupid
     return filter(requirement, mol.GetAtoms())
@@ -94,4 +95,132 @@ def GetXAtoms(mol, num=6, notprop=None):
     else:
         requirement = lambda atom:atom.GetAtomicNum()==num
     return filter( requirement, mol.GetAtoms())
+
+####### Complex Ring Functions
+ringsearch = {}
+def SSSR(mol, force=False):
+
+    if (not force) and mol.HasProp('ringcounts'):
+        ringcounts = map(int, mol.GetProp('ringcounts').split())
+        sharedatoms= mol.GetIntProp('sharedatoms')
+        sharedbonds= mol.GetIntProp('sharedbonds')
+        return (ringcounts,)+(sharedatoms, sharedbonds)
+    #(map(int, mol.GetProp('ringcounts').split()),)+mol.GetIntProp('sharedcounts'
+
+    ## SSSR ring analysis
+    RI = mol.GetRingInfo()
+
+    AssignedAtoms=set()
+    AssignedBonds=set()
+    SharedAtoms=set()
+    SharedBonds=set()
+
+    #nringatom= oe.OECount(mol, AtInRing )
+    #nringbond= oe.OECount(mol, BondInRing )
+    nringatom =len(flatten(RI.AtomRings()))
+    nringbond =len(flatten(RI.BondRings()))
+
+    nRings = [0] * max(nringatom ,8)
+
+    #Loop over all possible ring sizes
+    for i in xrange(3,nringatom+1):
+        if (len(AssignedAtoms)==nringatom and
+            len(AssignedBonds)==nringbond): break
+
+        if not ringsearch.has_key(i):
+            ringsearch[i] = Chem.MolFromSmarts('*~1'+'~*'*(i-1)+'1')
+
+        #Find all instances of ring size i
+        #matches=ringsearch[i].Match(mol,True)
+        matches=mol.GetSubstructMatches(ringsearch[i])
+        for match in matches:
+            atomids=set(match)
+            bondids=set([ bond.GetIdx() for bond in GetAtomIBonds(match, mol) ])
+            #bondids=set( [bond.target.GetIdx()
+            #              for bond in match.GetBonds() ] )
+
+            #Count this ring only if some of its atoms or bonds
+            #have not already been assigned to a smaller ring
+            if not (atomids.issubset(AssignedAtoms) and
+                    bondids.issubset(AssignedBonds)):
+                nRings[i-3]+=1
+                SharedAtoms.update(
+                    atomids.intersection(AssignedAtoms))
+                SharedBonds.update(
+                    bondids.intersection(AssignedBonds))
+                AssignedAtoms.update(atomids)
+                AssignedBonds.update(bondids)
+
+    mol.SetProp('ringcounts', " ".join(map(str, nRings)))
+    mol.SetIntProp('sharedatoms',len(SharedAtoms))
+    mol.SetIntProp('sharedbonds',len(SharedBonds))
+    return nRings,len(SharedAtoms),len(SharedBonds)
+
+#Smallest set of smallest rings analysis
+#Just returns counts of various ring sizes. While SSSR in general
+#is not invariant, these counts are.
+ringsearch={}
+def SSSR_GetRings(mol,force=False):
+
+    if not force and mol.HasProp('numSSSRrings'):
+        ringatoms=[]
+        ringbonds=[]
+        numring=mol.GetProp('numSSSRrings')
+        for i in xrange(numring):
+            ringatoms.append( set(map(int, mol.GetProp('AtomSSSR_'+str(i)).split())))
+            ringbonds.append( set(map(int, mol.GetProp('BondSSSR_'+str(i)).split())))
+        return ringatoms,ringbonds
+
+    ## SSSR ring analysis
+    RI = mol.GetRingInfo()
+    #oe.OEFindRingAtomsAndBonds(mol)
+    AssignedAtoms=set()
+    AssignedBonds=set()
+    SharedAtoms=set()
+    SharedBonds=set()
+
+    nringatom =len(flatten(RI.AtomRings()))
+    nringbond =len(flatten(RI.BondRings()))
+    nRings = [0] * max(nringatom,8)
+
+    #Loop over all possible ring sizes
+    ringatoms=[]
+    ringbonds=[]
+    for i in xrange(3,nringatom+1):
+        if (len(AssignedAtoms)==nringatom and
+            len(AssignedBonds)==nringbond): break
+        if not ringsearch.has_key(i):
+            ringsearch[i] = Chem.MolFromSmarts('*~1'+'~*'*(i-1)+'1')
+
+        #Find all instances of ring size i
+        matches=mol.GetSubstructMatches(ringsearch[i])
+        for match in matches:
+            if len(AssignedAtoms)==nringatom and \
+               len(AssignedBonds)==nringbond: break
+            atomids=set(match)
+            bondids=set([ bond.GetIdx() for bond in GetAtomIBonds(match) ])
+
+            #Count this ring only if some of its atoms or bonds
+            #have not already been assigned to a smaller ring
+            if not (atomids.issubset(AssignedAtoms) and
+                    bondids.issubset(AssignedBonds)):
+                ringatoms.append( atomids )
+                ringbonds.append( bondids )
+                nRings[i-3]+=1
+                SharedAtoms.update(
+                    atomids.intersection(AssignedAtoms))
+                SharedBonds.update(
+                    bondids.intersection(AssignedBonds))
+                AssignedAtoms.update(atomids)
+                AssignedBonds.update(bondids)
+
+    mol.SetProp('ringcounts', " ".join(map(str, nRings)))
+    mol.SetIntProp('sharedatoms',len(SharedAtoms))
+    mol.SetIntProp('sharedbonds',len(SharedBonds))
+    mol.SetIntProp('numSSSRrings', len(ringatoms) )
+    for i in xrange(len(ringatoms)):
+        mol.SetProp('AtomSSSR_'+str(i), " ".join(map(str,list(ringatoms[i]))))
+        mol.SetProp('BondSSSR_'+str(i), " ".join(map(str,list(ringbonds[i]))))
+    return ringatoms, ringbonds
+
 

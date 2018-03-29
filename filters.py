@@ -30,12 +30,17 @@ Some clearification:
     all filter-related function are acting on single molecule and return a
     bool value to indicate whether a molecule should be filtered out (True)
     or not (False)
+
+    Every filterflavor-module has a dictionary which is formatted as:
+    filterfunction might be a filterclass with a __call__ attribute though.
+    {'filtername1':filterfunction1, 'filtername2':filterfunction2, ... }
 '''
 
 ActiveFilters = dict()
 FilterFlavor = 'GDB'
 extrafilters = []
 MAXTRY=10
+SAScore=0.0
 
 ############################################################
 #       Functions from Filter.py
@@ -44,14 +49,21 @@ MAXTRY=10
 def Init():
     global ActiveFilters, FilterFlavor
 
+    # 1. load default filters into ActiveFilters:
+    from Filters import DefaultFilters
+    ActiveFilters.update(DefaultFilters.DefaultFilters)
+    if SAScore:
+        ActiveFilters['SAScore']=SAScoreFilter
+        SAScore.Init()
+
+    # 2. load the main set of filters of either GDB/Druglike/etc.
     if FilterFlavor=='GDB':
         from Filters import GDBFilters as FilterFlavor
     else:
         raise TypeError('FilterFlavor not recognized')
-    # so every filterflavor-module has a dictionary which is formatted as:
-    # filterfunction might be a filterclass with a __call__ attribute though.
-    # {'filtername1':filterfunction1, 'filtername2':filterfunction2, ... }
     ActiveFilters.update(FilterFlavor.AllFilters)
+
+    # 3. load extra specific filters
     if extrafilters:
         from Filters.ExtraFilters import ExtraFilters
         for extrafilter in extrafilters:
@@ -61,7 +73,7 @@ def Init():
             else:
                 ActiveFilters[extrafilter]=ExtraFilters[extrafilter]
         print "{} added".format(extrafilter)
-    print "ActiveFilters:", ActiveFilters
+    for AcFil in sorted(ActiveFilters.keys()): print AcFil
 
     return
 

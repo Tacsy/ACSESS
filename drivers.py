@@ -12,31 +12,31 @@ import random
 from output import logtime
 
 ###### mutation probabilities:
-bondflip=0.8
-atomflip=0.8
-ringadd=0.1
-AddFreq=0.5 #Actual probability: (.8*.7)*.5=.28
-DelFreq=0.8 #Actual probability: .224
-RingRemove=0.2 #actual probability=.8*.3=.24
+p_BondFlip=0.8
+p_AtomFlip=0.8
+p_RingAdd=0.1
+p_AddFreq=0.5 #Actual probability: (.8*.7)*.5=.28
+p_DelFreq=0.8 #Actual probability: .224
+p_RingRemove=0.2 #actual probability=.8*.3=.24
 MutateStereo=False
 StereoFlip=0.2
 
 ##### workflow switches:
-GenStrucs      = 0
-StartFiltering = 5
-StartTautomer  = 10
-StartGenStrucs = 20
+GenStruc      = 0
+startFilter   = 2
+startTautomer = 10
+startGenStruc = 20
 
 debug=True
 
 def SetIterationWorkflow(gen):
-    global GenStrucs
-    Tautomerizing = (gen>=StartTautomer)
+    global GenStruc
+    Tautomerizing = (gen>=startTautomer)
     #if Tautomerizing: cn.CanonicalTautomer=True
 
-    Filtering = (gen>= StartFiltering)
-    GenStrucs = (GenStrucs and gen>= StartGenStrucs)
-    return Tautomerizing, Filtering, GenStrucs
+    Filter = (gen>= startFilter)
+    GenStruc = (GenStruc and gen>= startGenStruc)
+    return Tautomerizing, Filter, GenStruc
 
 
 @logtime()
@@ -212,7 +212,7 @@ def SingleMutate(candidateraw):
 
     # 1. bond-flip:
     bonds=list( GetBonds(candidate, notprop='group') )
-    if random.random()<bondflip and len(bonds)>0:
+    if random.random()<p_BondFlip and len(bonds)>0:
         if debug: print "1",
         nFlip+=1
         try:
@@ -226,7 +226,7 @@ def SingleMutate(candidateraw):
 
     # 2. Flip atom identity
     atoms=filter(CanChangeAtom, candidate.GetAtoms())
-    if random.random()<atomflip and len(atoms)>0:
+    if random.random()<p_AtomFlip and len(atoms)>0:
         if debug: print "2",
         nAtomType+=1
         try:
@@ -241,7 +241,7 @@ def SingleMutate(candidateraw):
 
     # 3. add a ring - either a new aromatic ring, or bond
     # Aromatic ring addition disabled - probably not necessary
-    if random.random()<ringadd:
+    if random.random()<p_RingAdd:
         if debug: print "3",
         nNewRing+=1
         try:
@@ -253,7 +253,7 @@ def SingleMutate(candidateraw):
             nNewRingFail+=1
 
     # 4. Try to remove a bond to break a cycle
-    if random.random() < RingRemove:
+    if random.random() < p_RingRemove:
         if debug: print "4",
         bondringids = candidate.GetRingInfo().BondRings()
         # need to flatten bondringids:
@@ -274,7 +274,7 @@ def SingleMutate(candidateraw):
     # 5. add an atom
     atoms = GetAtoms(candidate, notprop='protected')
     bonds = GetBonds(candidate, notprop='group'    )
-    if ( random.random() < AddFreq and len(atoms)+len(bonds)>0 ):
+    if ( random.random() < p_AddFreq and len(atoms)+len(bonds)>0 ):
         if debug: print "5",
         nAdd+=1
         try:
@@ -287,7 +287,7 @@ def SingleMutate(candidateraw):
 
     # 6. remove an atom
     atoms= filter(CanRemoveAtom, candidate.GetAtoms())
-    if len(atoms)>1 and random.random() < DelFreq:
+    if len(atoms)>1 and random.random() < p_DelFreq:
         if debug: print "6",
         nRemove+=1
         try:

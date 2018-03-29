@@ -6,9 +6,13 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkithelpers import *
 from molfails import MutateFail
-import mprms
+#import mprms
 
 MAXTRY=100
+elements=[]
+maxWeight=0
+MxAtm=0
+
 
 debug=False
 ###############################################
@@ -16,7 +20,7 @@ debug=False
 ###############################################
 
 def Init():
-    elements = mprms.elements
+    #elements = mprms.elements
     halogens = [9,17,35,53]
     global elements, halogens
     
@@ -94,14 +98,14 @@ def Crossover(m1, m2):
     #pick fragments for crossover checking:
     # 1. Molecular weight
     Choices=[]
-    maxWeight = mprms.maxWeight
+    #maxWeight = mprms.maxWeight
     if maxWeight>0:
         w1=[ Descriptors.MolWt(f) for f in m1fs]
         w2=[ Descriptors.MolWt(f) for f in m2fs]
         for i,j in ( (i,j) for i in xrange(2) for j in xrange(2)):
             if w1[i]+w2[j] < maxWeight+50.0: Choices.append( (i,j) )
     # 2. Number of Atoms
-    MxAtm=mprms.MxAtm
+    #MxAtm=mprms.MxAtm
     if MxAtm>0:
         a1=[f.GetNumAtoms() for f in m1fs]
         a2=[f.GetNumAtoms() for f in m2fs]
