@@ -79,12 +79,17 @@ def Init():
 
 def FixAndFilter(mol):
     changed=False
-    failure=False
-    for _ in xrange(MAXTRY):
+    #failure=False
+    for i in xrange(MAXTRY):
         # in old version: here prepare for 2D filters
         # run through all filters:
         for filtername in ActiveFilters:
             failure = ActiveFilters[filtername](mol)
+            if filtername=='allene':
+                print 'allene', type(ActiveFilters[filtername]), 
+                print Chem.MolToSmiles(mol)
+                print failure
+            mol.SetBoolProp('failed', bool(failure))
             if failure:
                 if debug: print "in F&F:", failure
                 try:
@@ -98,8 +103,8 @@ def FixAndFilter(mol):
                     changed=True
                     Finalize(mol)
                     break
-        if not failure: break #i.e. all filters passed without problems
-    return changed, failure
+        if i==MAXTRY-1 or (not failure): #i.e. all filters passed without problems
+            return changed, failure
 
 ##################################
 # These use to be in Classes.py: #
@@ -144,9 +149,12 @@ class NewPatternFilter(NewFilter):
                 return self.name
             else: return False
         else:
-            #if self.pattern.SingleMatch(mymol): return self.name
-            if mol.HasSubstructMatch(self.pattern): return self.name
-            else: return False
+            match=mol.HasSubstructMatch(self.pattern)
+            if match:
+                #if self.name=='allene':print "match:", match
+                return self.name
+            else:
+                return False
 
     def __repr__(self):
         #return "{}\n".format(self.name, self.pattern.GetPattern().GetTitle())
@@ -157,7 +165,7 @@ class NewPatternFilter(NewFilter):
             return self.fixroutine(mymol,self)
         else: return False
 
-    def SetFilterRoutine(self,*args,**kwargs): raise NotImplementedError()
+    #def SetFilterRoutine(self,*args,**kwargs): raise NotImplementedError()
 
     def SetFilterPattern(self,pattern):
         self.pattern=pattern

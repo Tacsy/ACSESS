@@ -83,6 +83,9 @@ def evolve():
  
         # 3. FILTERS
         newlib = dr.DriveFilters(newlib, Filtering, GenStrucs)
+
+        # 3b. When necessary FilterPool is switching is just set on
+        pool   = dr.DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing, gen)
  
         # 4. OBJECTIVE
         if mprms.optimize:

@@ -10,10 +10,12 @@ bondorder={ 1:Chem.BondType.SINGLE,
             3:Chem.BondType.TRIPLE }
 
 ############ FROM CANONICAL #############################
-def Finalize(mol):
+def Finalize(mol, CanonicalTautomer=True):
     if type(mol)==Chem.RWMol:
         RW=True
     else:RW=False
+    if CanonicalTautomer:
+        Tautomerize(mol)
     try: Chem.SanitizeMol(mol)
     except Exception as e:
         if debug:
@@ -95,6 +97,25 @@ def GetXAtoms(mol, num=6, notprop=None):
     else:
         requirement = lambda atom:atom.GetAtomicNum()==num
     return filter( requirement, mol.GetAtoms())
+
+########## TAUTOMERIZING:
+
+def Tautomerize(mol):
+    try:
+        if mol.GetBoolProp('tautomerized'): return
+    except KeyError: pass
+    smi1 = Chem.MolToSmiles(mol)
+    from molvs import Standardizer
+    s = Standardizer()
+    s.standardize(mol)
+    #from molvs.tautomer import TautomerCanonicalizer
+    #t = TautomerCanonicalizer()
+    #t.canonicalize(mol)
+    mol.SetBoolProp('tautomerized', True)
+    smi2 = Chem.MolToSmiles(mol)
+
+    if not smi1==smi2: print "tautomerized:", smi1, 'to:', smi2
+    return
 
 ####### Complex Ring Functions
 ringsearch = {}

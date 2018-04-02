@@ -179,23 +179,28 @@ AllFilters['atomcounts'].SetFixRoutine(FixAtomQuantities)
 AllFilters['triple bond in ring']=NewFilter('triple bond in ring')
 
 def TripleBondInRing(mol):
+    Chem.Kekulize(mol)
     for bond in mol.GetBonds():
         if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
             # test if Ringsize smaller than 9:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 #if oe.OEBondGetSmallestRingSize(bond)<9 and bond.GetOrder()==3:
-                print 'yes'
+                #print 'yes'
+                Chem.SetAromaticity(mol)
                 return "triple bond in ring"
+    Chem.SetAromaticity(mol)
     return False
 AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
 
 def FixTripleBondInRing(mol):
+    Chem.Kekulize(mol)
     changed=False
     for bond in mol.GetBonds():
         if bond.IsInRing() and bond.GetBondType==Chem.BondType.TRIPLE:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
+    Chem.SetAromaticity(mol)
     return changed
 AllFilters['triple bond in ring'].SetFixRoutine(FixTripleBondInRing)
 
@@ -286,7 +291,6 @@ AllFilters['acidtaut']=newfilt
 newfilt=NewPatternFilter('aminal')
 newfilt.SetFilterPattern(Chem.MolFromSmarts("[N&X3][C&X4][N,O]")  )
 AllFilters['aminal']=newfilt
-
 
 newfilt=NewPatternFilter('C=N')
 newfilt.SetFilterPattern(Chem.MolFromSmarts("[C&X3]=[N&X2]")) # ca veut dire: sp2C=sp2N
