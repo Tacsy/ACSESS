@@ -47,7 +47,7 @@ def FixBredt(mol):
                 break
     for match in matches:
         for bond in GetAtomIBonds(match, mol): bond.SetBondType(Chem.BondType.SINGLE)
-        Chem.SetAromaticity(mol)
+        if aromatic: Chem.SetAromaticity(mol)
         changed=True
     return changed
 AllFilters["Bredt's rule"].SetFixRoutine(FixBredt)
@@ -186,9 +186,9 @@ def TripleBondInRing(mol):
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 #if oe.OEBondGetSmallestRingSize(bond)<9 and bond.GetOrder()==3:
                 #print 'yes'
-                Chem.SetAromaticity(mol)
+                if aromatic: Chem.SetAromaticity(mol)
                 return "triple bond in ring"
-    Chem.SetAromaticity(mol)
+    if aromatic: Chem.SetAromaticity(mol)
     return False
 AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
 
@@ -200,7 +200,7 @@ def FixTripleBondInRing(mol):
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
-    Chem.SetAromaticity(mol)
+    if aromatic: Chem.SetAromaticity(mol)
     return changed
 AllFilters['triple bond in ring'].SetFixRoutine(FixTripleBondInRing)
 
@@ -227,8 +227,6 @@ def FixByRemovingHeteroatoms(mol,filter):
                     mutate.RemoveGroup(mol,atom.GetProp('group'))
                 atom.SetAtomicNum(6)
                 changed=True
-                #Chem.SanitizeMol(mol)
-                #Chem.SetAromaticity(mol)
                 matches = filter.FilterWithExceptions(mol)
                 fixd=True
                 break

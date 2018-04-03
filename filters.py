@@ -73,22 +73,29 @@ def Init():
             else:
                 ActiveFilters[extrafilter]=ExtraFilters[extrafilter]
         print "{} added".format(extrafilter)
-    for AcFil in sorted(ActiveFilters.keys()): print AcFil
+    if debug:
+        for AcFil in sorted(ActiveFilters.keys()): print AcFil
 
     return
 
 def FixAndFilter(mol):
     changed=False
+    if mol is None: return None, True
     #failure=False
     for i in xrange(MAXTRY):
         # in old version: here prepare for 2D filters
         # run through all filters:
         for filtername in ActiveFilters:
-            failure = ActiveFilters[filtername](mol)
-            if filtername=='allene':
-                print 'allene', type(ActiveFilters[filtername]), 
-                print Chem.MolToSmiles(mol)
-                print failure
+            try:
+                failure = ActiveFilters[filtername](mol)
+            except AttributeError:
+                print "filtername:", filtername
+                print "mol:", Chem.MolToSmiles(mol)
+                raise SystemExit('error')
+            #if filtername=='allene':
+            #    print 'allene', type(ActiveFilters[filtername]), 
+            #    print Chem.MolToSmiles(mol)
+            #    print failure
             mol.SetBoolProp('failed', bool(failure))
             if failure:
                 if debug: print "in F&F:", failure
@@ -101,7 +108,10 @@ def FixAndFilter(mol):
                     return changed, failure
                 else:
                     changed=True
-                    Finalize(mol)
+                    try: Finalize(mol)
+                    except ValueError as e:
+                        print e
+                        return changed, failure
                     break
         if i==MAXTRY-1 or (not failure): #i.e. all filters passed without problems
             return changed, failure

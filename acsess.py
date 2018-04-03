@@ -97,8 +97,8 @@ def evolve():
         if mprms.optimize:
             lib, pool = objective.SelectFittest(pool, mprms.subsetSize)
         elif len(pool)>mprms.subsetSize:
-            lib = random.sample(pool, mprms.subsetSize)
-            #lib = Maximin(pool)
+            #lib = random.sample(pool, mprms.subsetSize)
+            lib = dr.DriveSelection(pool, mprms.subsetSize)
         else:
             lib = [ mol for mol in pool ]
         FinishSelection(lib)

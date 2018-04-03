@@ -7,6 +7,7 @@ import numpy as np
 from mpi4py import MPI
 
 import output
+mpi=False
 '''
 this module include various previous modules that coorespnds to parallelization
 in order to make the code in a cleaner way, including:

@@ -89,6 +89,8 @@ def GetFragment(mol):
 
 
 def Crossover(m1, m2):
+    #Kekulize mols:
+    for m in (m1, m2):Chem.Kekulize(m, True)
     #Fragment molecules
     m1fs=GetFragment(m1)
     m2fs=GetFragment(m2)
@@ -174,10 +176,9 @@ def Crossover(m1, m2):
 
     #print "new mol!", Chem.MolToSmiles(newmolRW)
     mol = newmolRW.GetMol()
-    try: Chem.SanitizeMol(mol)
+    try: Finalize(mol)
     except: raise MutateFail()
     if debug: print "CX5",
-    if Chem.MolToSmiles(mol)=='O=c1[nH][nH]ccc1=S': print "HERE CX!"
     return mol
 
 
@@ -361,7 +362,7 @@ def RemoveBond(mol, bond):
     if not bond.IsInRing():
         raise MutateFail(mol,'Non-ring bond passed to RemoveBond')
     mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
-    Chem.SetAromaticity(mol)
+    if aromatic: Chem.SetAromaticity(mol)
     return mol
 
 #################################################################
@@ -399,6 +400,7 @@ def RemoveAtom(mol,atom):
     if atom.HasProp('protected') or atom.HasProp('fixed'):
         raise MutateFatal(mol,'Protected or fixed atom passed to'+
                           " RemoveAtom.")
+    Degree = atom.GetDegree() + atom.GetImplicitValence()
 
     # If atom is the representative of a larger group (e.g. N in nitro group)
     # delete the entire group
@@ -411,7 +413,7 @@ def RemoveAtom(mol,atom):
         raise MutateFail(mol)
 
     #Remove a terminal atom:
-    elif atom.GetDegree()==1:
+    elif Degree()==1:
         for bond in atom.GetBonds():
             mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
         mol.RemoveAtom(atom.GetIdx())
@@ -421,7 +423,7 @@ def RemoveAtom(mol,atom):
     #Remove an in-chain atom:
     #
     #NOT WORKING WELL
-    elif atom.GetDegree()==2:
+    elif Degree()==2:
         try:
             Chem.Kekulize(mol) # to not remove atoms from aromatic rings
         except Exception as e:
@@ -436,11 +438,11 @@ def RemoveAtom(mol,atom):
             mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
         mol.RemoveAtom(atom.GetIdx())
         mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
-        Chem.SetAromaticity(mol)
+        if aromatic: Chem.SetAromaticity(mol)
 
 
     #Remove a 3-bond atom:
-    elif atom.GetDegree()==3:
+    elif GetDegree()==3:
         try:
             Chem.Kekulize(mol) # to not remove atoms from aromatic rings
         except Exception as e:
@@ -472,10 +474,10 @@ def RemoveAtom(mol,atom):
             for neighb in nbr:
                 if not neighb.GetIdx()==nbrCarbon[choose-3].GetIdx():
                     mol.AddBond(neighb.GetIdx() ,nbrCarbon[choose-3].GetIdx(), bondorder[1])
-        Chem.SetAromaticity(mol)
+        if aromatic: Chem.SetAromaticity(mol)
 
     #Remove a 4-bond atom
-    elif atom.GetDegree()==4:
+    elif GetDegree()==4:
         try:
             Chem.Kekulize(mol) # to not remove atoms from aromatic rings
         except Exception as e:
@@ -497,7 +499,7 @@ def RemoveAtom(mol,atom):
             mol.AddBond(n3.GetIdx(), nbr[0].GetIdx(), bondorder[1])
         else: #XA4 -> A(A3)
             for neighb in nbr: mol.AddBond(n1.GetIdx(), neighb.GetIdx(), bondorder[1])
-        Chem.SetAromaticity(mol)
+        if aromatic: Chem.SetAromaticity(mol)
 
 
     #Make sure nothing is bonded twice
@@ -522,7 +524,7 @@ def RemoveAtom(mol,atom):
 
     if True:
         try:
-            Chem.SanitizeMol(mol)
+            Finalize(mol)
         except: print "in Remove Atom with:", Chem.MolToSmiles(mol, True)
         return mol
 

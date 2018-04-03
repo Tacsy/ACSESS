@@ -22,6 +22,11 @@ property calculation, including:
     MQN.py
 '''
 
+def AutoCorr2D(mol):
+    from rdkit.Chem import rdMolDescriptors
+    vector = rdMolDescriptors.CalcAUTOCORR2D(mol)
+    return vector
+
 ############################################################
 # Assign polarizabilities to every atom.
 # Units are Angstrom^3/2. We assume all valences are filled.
@@ -275,7 +280,7 @@ def NumBridgeheadsAndSpiro(mol, ri=None):
     return nBridgehead, nSpiro
 
 def CalcSAScore(mol):
-    if _fscores = None:
+    if _fscores is None:
         ReadFragScores()
     
     #fragment score

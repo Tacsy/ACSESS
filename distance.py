@@ -3,15 +3,17 @@
 import numpy as np
 from pcadimreduction import PCA 
 from scipy.spatial.distance import cdist
+import random
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkithelpers import *
 
 import parallel as pl
 import mongoserver
 import output
 
-
+metric=None
 '''
 this module include various previous modules that corresponds to chemical space
 representation and selection, including:
@@ -30,7 +32,7 @@ representation and selection, including:
 ############################################################
 
 # Initialize coords
-def CoordInit():
+def Init():
     global Coords
 
     # set coordination system
@@ -38,8 +40,10 @@ def CoordInit():
         from molproperty import CalcMQNs as Coords
     elif metric == 'autocorr':
         from molproperty import MoreauBrotoACVec as Coords
-    elif metric == 'none':
-        print 'No coordinate system set!'
+    elif metric == 'autocorr2D':
+        from molproperty import AutoCorr2D as Coords
+    elif metric is None:
+        raise SystemExit('No coordinate system set!')
     else:
         raise KeyError('Unknown metric specified in parameter file: ' + metric)
 
@@ -48,17 +52,17 @@ def SetCoords(mol):
     # set the coordinate of the molecule and return as a np.array object
     # if not, calculate first and then assign it as a property of the molecule
     if mol.HasProp('coords'):
-        coord = mol.GetProp('coords')
+        coord = GetListProp(mol, 'coords')
     else:
         coord = Coords(mol)
-        mol.SetProp('coords', coord)
+        SetListProp(mol, 'coords', coord)
     
     return np.array(coord)
 
 # Drive MPI coordinate calculation
 def ScatterCoords(mols):
     
-    if not parallel.mpi:
+    if not pl.mpi:
         output.StartTimer('COORDS')
         for mol in mols:
             if not mol.HasProp('coords'):
@@ -90,8 +94,8 @@ def ScatterCoords(mols):
 
     output.StartTimer('COORDS')
     print 'Scattering chemical space coordinate calculation ...', len(needCalc)
-    parallel.MyTask.SetFunction(MPICoordCalc)
-    coords = parallel.MyTask.RunMPI(needCalc)
+    pl.MyTask.SetFunction(MPICoordCalc)
+    coords = pl.MyTask.RunMPI(needCalc)
 
     for coord, mol in zip(coords, needCalc):
         mol.SetProp('coords', coord)
@@ -105,7 +109,7 @@ def ScatterCoords(mols):
     output.EndTimer('COORDS')
 
 # Function for scattering coordinate calculations
-@parallel.MPIScatter
+#@pl.MPIScatter
 def MPICoordCalc(smistring):
     mol = Chem.MolFromSmiles(smistring)
 
@@ -122,9 +126,9 @@ def GetStdDevs(mols):
         coords = mols
     else:
         ScatterCoords(mols)
-        coords = np.array([GetCoords(mol) for mol in mols])
+        coords = np.array([SetCoords(mol) for mol in mols])
     std_dev = np.std(coords,axis=0)
-    for i in xrange(len(std_std)):
+    for i in xrange(len(std_dev)):
         if abs(std_dev[i]) < 1e-10: 
             std_dev[i] = 1.0
 
@@ -139,7 +143,7 @@ def HandleMolCoords(mols,std_dev=None,norm=True):
     else:
         passMols = True
         ScatterCoords(mols)
-        coords = np.array([GetCoords(mol) for mol in mols])
+        coords = np.array([SetCoords(mol) for mol in mols])
     
     #return coordinates according to normalization or not
     if not norm:
@@ -201,7 +205,7 @@ def Maximin(mols,nMol,firstpick=None,startCoords=None,verbose=False):
     for i in xrange(nMol-1):
         dists = cdist(lastcoord,coords)[0]
         minDist = np.minimum(dists,minDist)
-        nextpick = mindist.argmax()
+        nextpick = minDist.argmax()
         if minDist[nextpick] == 0:
             break
         picks.append(indices[nextpick])
@@ -350,7 +354,7 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
     else:
         return newpicks
 
-@pl.MPIScatter
+#@pl.MPIScatter
 def MPI_PCA_Maximin(MPISEND):
     coords, nMol, startcoords = MPISEND
     picks = Maximin(coords, nMol, startcoords=startcoords)
@@ -415,7 +419,7 @@ def ScatterAveNNDistance(mols,getsqrt=False):
 
     return nndist/len(mols)
 
-@pl.MPIScatter
+#@pl.MPIScatter
 def MPIAveNN(args):
     startchunk, endchunk, chunksize, getsqrt, coords = args
     nndist = 0.0

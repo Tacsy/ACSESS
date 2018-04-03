@@ -28,7 +28,7 @@ startTautomer = 10
 startGenStruc = 20
 KeepNoGeomPool= True
 
-debug=True
+debug=False
 
 def SetIterationWorkflow(gen):
     global GenStruc
@@ -44,7 +44,7 @@ def SetIterationWorkflow(gen):
 def DriveMutations(lib):
     nDups, nExcp, nCand=(0,0,0)
     # 1. CROSSOVERS:
-    if debug: print "crossovers..."
+    print "crossovers...",
     newmols=[]
     for i in xrange( min(mprms.nCross, len(lib)-1) ):
         try:
@@ -68,7 +68,7 @@ def DriveMutations(lib):
     if debug: print "nDups after CX:", nDups
 
     # 2. MUTATIONS
-    if debug: print "mutations..."
+    print "mutations...",
     for i in xrange(mprms.nMut):
         if i<mprms.nMut*mprms.EdgeRatio and mprms.EdgeLen>0:
             candidate=Chem.Mol(random.choice(lib[:mprms.EdgeLen]))
@@ -76,9 +76,12 @@ def DriveMutations(lib):
             candidate=Chem.Mol(random.choice(lib+newmols))
         try:
             candidate=MakeMutations(candidate)
-            if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
-            try: Finalize(candidate)
-            except Exception as e: raise MutateFail
+            if type(candidate)==Chem.RWMol:
+                candidate=candidate.GetMol()
+            try:
+                Finalize(candidate)
+            except Exception as e:
+                raise MutateFail(candidate)
             newmols.append(candidate)
             nCand+=1
         except MutateFail: nExcp+=1
@@ -90,11 +93,6 @@ def DriveMutations(lib):
     if debug:
         with open('mutatelib','w') as f:
             for mol in newmols: f.write(Chem.MolToSmiles(mol)+'\n')
-
-    if "O=c1[nH][nH]ccc1=S" in map(Chem.MolToSmiles, newmols):
-        print "20"
-    if "ccc(cc(c)CC)COC" in map(Chem.MolToSmiles, newmols):
-        print "20b"
 
     return newmols
 
@@ -112,7 +110,7 @@ def DriveFilters(lib, Filter=True, GenStrucs=False):
         mol.SetBoolProp('filtered', True)
         if failed in ['unknown', 'False'] or failed==True:
             failed='unknown'
-        if failed:
+        if debug and failed:
             mol.SetProp('failedfilter', failed)
             print failed
             filterFile.write(Chem.MolToSmiles(mol) + '  ' + failed + '\n')
@@ -124,29 +122,47 @@ def DriveFilters(lib, Filter=True, GenStrucs=False):
 
 def DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing, gen):
     global GenStruc
+    pool = filter(bool, pool)
     if Tautomerizing:
         CanonicalTautomer=True
         if gen==startTautomer:
-            print 'Now tautomerizing ... tautomerizing pool'
-            for mol in pool:
-                if Tautomerize(mol): Finalize(mol)
+            print 'tautomerizing pool...',
+            pool = filter(Tautomerize, pool)
     if GenStrucs and gen==startGenStrucs and not KeepNoGeomPool:
-        print 'Now processing geometries ... restarting pool '+\
-              'and filtering library'
+        print 'restarting and filtering pool...',
         pool=[mol for mol in pool if mol.GetBoolProp('hasstructure')]
         DriveFilters(pool, Filtering, GenStruc)
     if (Filtering and gen==startFilter) or (
         GenStruc and gen==startGenStruc and KeepNoGeomPool):
-        print 'Now filtering ... filtering pool'
+        print 'pool-',
         pool = DriveFilters(pool, Filtering, GenStrucs)
     return pool
 
 
 @logtime()
 def ExtendPool(pool, lib, newmols):
-    print "selecting..."
     pool=RemoveDuplicates(lib+newmols)
     return pool
+
+@logtime()
+def DriveSelection(pool, subsetSize):
+    print "selecting...",
+    #1. select maximin algorithm.
+    if hasattr(mprms,'metric') :
+        from distance import Maximin
+    else:
+        from similarity import Maximin
+
+    #2. select
+    answer = Maximin(pool, mprms.subsetSize)
+    if type(answer)==tuple:
+        siml=answer[0]
+        lib=answer[1]
+    else:
+        lib=answer
+
+    return lib
+
 
 
 ############ EXTRA FUNCTIONS: #############
@@ -169,7 +185,7 @@ def RemoveDuplicates(lib):
     lib.sort( key=lambda x: x.GetProp('isosmi') )
     i=1
     while i<len(lib):
-        print len(lib),
+        #print len(lib),
         if lib[i].GetProp('isosmi')==lib[i-1].GetProp('isosmi'):
             iscore=GetScore(lib[i])
             i1score=GetScore(lib[i-1])
@@ -192,17 +208,10 @@ def RemoveDuplicates(lib):
 #@captureMolExceptions
 def MakeMutations(candidate):
     candidate=SingleMutate(candidate)
-    if "O=c1[nH][nH]ccc1=S"==Chem.MolToSmiles(candidate):
-        print "16"
-    #candidate,trimmed = TrimAtoms(candidate)
-    #if MutateStereo: FlipStereo(candidate)
     try:
         Finalize(candidate)
-        if "O=c1[nH][nH]ccc1=S"==Chem.MolToSmiles(candidate):
-            print "17"
     except ValueError:
         print Chem.MolToSmiles(candidate)
-
     return candidate
 
 def SingleMutate(candidateraw):
@@ -249,10 +258,10 @@ def SingleMutate(candidateraw):
             bonds=list( GetBonds(candidate, notprop='group') )
             mutate.FlipBond(candidate,random.choice(bonds))
             Finalize(candidate)
-            Chem.SetAromaticity(candidate)
+            if aromatic: Chem.SetAromaticity(mol)
             return candidate
         except MutateFail:
-            Chem.SetAromaticity(candidate)
+            if aromatic: Chem.SetAromaticity(mol)
             nFlipFail+=1
 
     # 2. Flip atom identity
@@ -320,20 +329,23 @@ def SingleMutate(candidateraw):
             nAddFail+=1
 
     # 6. remove an atom
-    atoms= filter(CanRemoveAtom, candidate.GetAtoms())
     if len(atoms)>1 and random.random() < p_DelFreq:
         if debug: print "6",
         nRemove+=1
+        Chem.Kekulize(candidate, True)
+        atoms= filter(CanRemoveAtom, candidate.GetAtoms())
         try:
             try:
-                mutate.RemoveAtom(candidate,random.choice(atoms))
+                mutate.RemoveAtom(candidate, random.choice(atoms))
                 Finalize(candidate)
             except Exception as e:
                 print "e:", e, "mol:", Chem.MolToSmiles(candidate) 
                 raise MutateFail
+            if aromatic: Chem.SetAromaticity(mol)
             return candidate
         except MutateFail:
             nRemoveFail+=1
+        if aromatic: Chem.SetAromaticity(mol)
 
     # Finally: # necessary? # I believe this is not properly implemented
     # so I skip this error raising

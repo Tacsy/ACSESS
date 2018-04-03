@@ -3,26 +3,30 @@
 
 from rdkit import Chem
 import traceback
+from molfails import MutateFail
 debug=True
 
+########### Some global variables 
 bondorder={ 1:Chem.BondType.SINGLE,
             2:Chem.BondType.DOUBLE,
             3:Chem.BondType.TRIPLE }
+aromatic=False
 
 ############ FROM CANONICAL #############################
-def Finalize(mol, CanonicalTautomer=True):
+def Finalize(mol, CanonicalTautomer=False):
     if type(mol)==Chem.RWMol:
         RW=True
     else:RW=False
     if CanonicalTautomer:
         Tautomerize(mol)
-    try: Chem.SanitizeMol(mol)
+    try: Sanitize(mol)
     except Exception as e:
         if debug:
             for item in traceback.extract_stack(): print item
-        print "Error in Finalize with", Chem.MolToSmiles(mol), e
+        print "Error in Finalize with", Chem.MolToSmiles(mol, False), e
     #Chem.SetAromaticity(mol)
     ResetProps(mol)
+    mol.UpdatePropertyCache()
     return
 
 def ResetProps(mol):
@@ -33,9 +37,9 @@ def ResetProps(mol):
     mol.SetProp('isosmi',isosmi)
     return
 
-def Sane(mol):
+def Sane(mol, *args, **kwargs):
     try:
-        Chem.SanitizeMol(mol)
+        Sanitize(mol, *args, **kwargs)
         return True
     except:
         return False
@@ -98,6 +102,29 @@ def GetXAtoms(mol, num=6, notprop=None):
         requirement = lambda atom:atom.GetAtomicNum()==num
     return filter( requirement, mol.GetAtoms())
 
+########## Set List properties
+
+def SetListProp(mol, name, iterable):
+    string = ' '.join(['{:.20f}'.format(x) for x in iterable])
+    mol.SetProp(name, string)
+def GetListProp(mol, name):
+    string = mol.GetProp(name)
+    return map(float, string.split())
+
+########## function potentially useful to avoid aromaticity
+
+def Sanitize(mol, aromatic=False):
+    if aromatic:
+        Chem.SanitizeMol(mol)
+    else:
+        Chem.SanitizeMol(mol,
+            sanitizeOps=Chem.SANITIZE_ALL^Chem.SANITIZE_SETAROMATICITY
+            )
+        #sanitizeOps=Chem.SANITIZE_ALL^Chem.SANITIZE_KEKULIZE^\
+        #Chem.SANITIZE_SETAROMATICITY^Chem.SANITIZE_CLEANUP^\
+        #Chem.SANITIZE_CLEANUPCHIRALITY)
+    return
+
 ########## TAUTOMERIZING:
 
 def Tautomerize(mol):
@@ -107,7 +134,11 @@ def Tautomerize(mol):
     smi1 = Chem.MolToSmiles(mol)
     from molvs import Standardizer
     s = Standardizer()
-    s.standardize(mol)
+    try:
+        s.standardize(mol)
+    except ValueError as e:
+        MutateFail(mol)
+        return False
     #from molvs.tautomer import TautomerCanonicalizer
     #t = TautomerCanonicalizer()
     #t.canonicalize(mol)
@@ -115,7 +146,7 @@ def Tautomerize(mol):
     smi2 = Chem.MolToSmiles(mol)
 
     if not smi1==smi2: print "tautomerized:", smi1, 'to:', smi2
-    return
+    return True
 
 ####### Complex Ring Functions
 ringsearch = {}

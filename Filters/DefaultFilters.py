@@ -106,7 +106,7 @@ def TooManyRings(mol):
     if mol.GetNumAtoms()>maxRings:
         nrings,sa,sb=SSSR(mol)
         if sum(nrings)>maxRings:
-            return True
+            return 'Too Many Rings'
     return False
 DefaultFilters['Too many rings'].SetFilterRoutine(TooManyRings)
 DefaultFilters['Too many rings'].SetFixRoutine(CutRings)

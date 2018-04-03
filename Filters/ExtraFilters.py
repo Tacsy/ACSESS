@@ -52,7 +52,7 @@ ExtraFilters['qiu2'].SetFilterRoutine(CheckBondOrder)
 
 ExtraFilters['quinoid']=NewFilter('notquinoid')
 def findQuinoid(mol, strict=False):
-    Chem.Kekulize(mol)
+    Chem.Kekulize(mol, True)
 
     # quionoid matches
     # the 12 match urges for at least one extra conjugated bond that is not terminal
@@ -75,10 +75,10 @@ def findQuinoid(mol, strict=False):
                     if ma.GetAtomicNum()==8:
                         matches.add(idx)
         if len(matches)<2:
-            print "no match:", Chem.MolToSmiles(mol)
+            #print "no match:", Chem.MolToSmiles(mol)
             return True
-        elif len(matches)>2:
-            print "multiple matches:", Chem.MolToSmiles(mol)
+        elif len(matches)>3:
+            #print "multiple matches:", Chem.MolToSmiles(mol)
             return True
         mol.SetProp('quinoid_indices', " ".join(map(str, list(matches))))
     for ss in ssss:
@@ -105,6 +105,7 @@ def findQuinoid(mol, strict=False):
         requirement = requirement and n_co<=nmax_co
 
     # since when okay has to return False:
+    if aromatic: Chem.SetAromaticity(mol)
     return not requirement
 ExtraFilters['quinoid'].SetFilterRoutine(findQuinoid)
 

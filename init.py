@@ -4,6 +4,7 @@ import os, sys
 sys.path.append('.')
 sys.path.append('./Filters/')
 from rdkit import Chem 
+from rdkithelpers import *
 import mprms
 import importlib
 
@@ -42,7 +43,9 @@ def ReadMPRMS():
     # Decide which modules have to be imported:
     _modules = ['mutate', 
                 'filters', 'Filters.DefaultFilters',
-                'drivers' ]
+                'drivers',
+                'distance',
+                'rdkithelpers']
     if mprms.optimize: _modules.append('objective')
 
     # Import the modules / Set the global variables / Initiate modules
@@ -106,7 +109,7 @@ def StartLibAndPool(restart):
                 startiter=i+1
                 break
         else: raise SystemExit('RESTART but no iteration files found')
-        supplier = Chem.SmilesMolSupplier(filename)
+        supplier = Chem.SmilesMolSupplier(filename, sanitize=False)
         lib = [mol for mol in supplier]
         setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
         map(setisosmi, lib)
@@ -115,7 +118,7 @@ def StartLibAndPool(restart):
     #case 2: read from mprms.seedfile
     elif hasattr(mprms, 'seedFile'):
         seedFile = mprms.seedFile
-        supplier = Chem.SmilesMolSupplier(seedFile)
+        supplier = Chem.SmilesMolSupplier(seedFile, sanitize=False)
 
         lib = [mol for mol in supplier]
         setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
@@ -127,7 +130,7 @@ def StartLibAndPool(restart):
         lib = mprms.seedLib
         if nSeed > 0:
             lib = lib[:nSeed]
-            lib = [Chem.MolFromSmiles(mol) for mol in lib]
+            lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
         if len(lib) == 0:
             raise ValueError, "Seedlib is empty."
         print "Seeding with mprms.seedlib"
@@ -136,8 +139,8 @@ def StartLibAndPool(restart):
     else:
         print 'Seeding library with presets'
         lib = []
-        lib.append(Chem.MolFromSmiles('C1CCCCC1'))
-        lib.append(Chem.MolFromSmiles('C1=CC=CC=C1'))
+        lib.append(Chem.MolFromSmiles('C1CCCCC1', sanitize=False))
+        lib.append(Chem.MolFromSmiles('C1=CC=CC=C1', sanitize=False))
     
     #####################
     #     Start pool    #
@@ -150,20 +153,17 @@ def StartLibAndPool(restart):
     #case 2: read from mprms.poolfile
     if hasattr(mprms, 'poolFile'):
         pool = [mol for mol in lib]
-        for poolFile in mprms.poolFile:
-            supplier = Chem.SmilesMolSupplier(poolFile)
-
-            newpool = [mol for mol in supplier]
-            pool += newpool
-
-            print 'Initializing pool from ' + poolFile + ' of ' +\
+        supplier = Chem.SmilesMolSupplier(mprms.poolFile, sanitize=False)
+        newpool = [mol for mol in supplier]
+        pool += newpool
+        print 'Initializing pool from ' + mprms.poolFile + ' of ' +\
                    str(len(newpool)) + ' molecules'
 
     #case 3: read from mprms.poollib
     elif hasattr(mprms, 'poolLib'):
         #poolLib is a list of SMILES
         pool = mprms.poolLib
-        pool = [Chem.MolFromSmiles(mol) for mol in lib]
+        pool = [Chem.MolFromSmiles(mol, False) for mol in lib]
         pool = pool + lib
         if len(pool) == 0:
             raise ValueError, "Poollib is empty."
@@ -173,5 +173,13 @@ def StartLibAndPool(restart):
     else:
         print 'Initializing pool from library'
         pool = [mol for mol in lib]
+
+    ######### sanitize lib & pool
+    ll1,lp1= (len(lib), len(pool))
+    lib    = filter(Sane, lib)
+    pool   = filter(Sane, pool)
+    ll2,lp2= (len(lib), len(pool))
+    if not ll1==ll2:print "removed {:d} unsane molecules from lib  | libsize : {:d}".format(ll1-ll2, ll2)
+    if not lp1==lp2:print "removed {:d} unsane molecules from pool | poolsize: {:d}".format(lp1-lp2, lp2)
 
     return startiter, lib, pool
