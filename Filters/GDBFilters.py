@@ -11,6 +11,11 @@ AllFilters={}
 
 ############ FILTERS
 
+def GeomFilter(mol):
+    # NotImplemented
+    return False
+
+
 # BREDT VIOLATIONS
 AllFilters["Bredt's rule"]=NewFilter("Bredt's rule")
 BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
@@ -185,18 +190,18 @@ def TripleBondInRing(mol):
             # test if Ringsize smaller than 9:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 #if oe.OEBondGetSmallestRingSize(bond)<9 and bond.GetOrder()==3:
-                #print 'yes'
                 if aromatic: Chem.SetAromaticity(mol)
                 return "triple bond in ring"
+            else:
+                print "triple bond in large ring:", Chem.MolToSmiles(mol)
     if aromatic: Chem.SetAromaticity(mol)
     return False
 AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
 
 def FixTripleBondInRing(mol):
-    Chem.Kekulize(mol)
     changed=False
     for bond in mol.GetBonds():
-        if bond.IsInRing() and bond.GetBondType==Chem.BondType.TRIPLE:
+        if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
@@ -665,7 +670,11 @@ def FixTopo144Bridge(mol,filter):
                 bonds[2].HasProp('group') ):
             mol.RemoveBond(bonds[0].GetBeginAtomIdx(), bonds[0].GetEndAtomIdx())
             mol.RemoveBond(bonds[2].GetBeginAtomIdx(), bonds[2].GetEndAtomIdx())
-            mol.AddBond( atoms[1], atoms[4], bondorder[1])
+            try:
+                mol.AddBond( atoms[1].GetIdx(), atoms[4].GetIdx(), bondorder[1])
+            except RuntimeError as e:
+                print e
+                break
             changed=True
         else: break
         matches = filter.FilterWithExceptions(mol)

@@ -13,7 +13,7 @@ import numpy as np
 
 from rdkit import Chem
 
-from helpers import Compute3DCoords
+from helpers import Compute3DCoords, xyzfromrdmol
 #s3d.UseBalloon=True
 #s3d.S3DInit()
 
@@ -96,26 +96,6 @@ def getXYZ(rdmol):
     xyz = xyzfromrdmol(rdmol)
     return xyz
 
-from contextlib import contextmanager
-@contextmanager
-def custom_redirection(fileobj):
-    old = sys.stdout
-    sys.stdout = fileobj
-    try:
-        yield fileobj
-    finally:
-        sys.stdout = old
-
-def xyzfromrdmol(rdmol):
-    atomN={1:'H', 5:'B',6:'C',7:'N', 8:'O', 9:'F', 14:'Si', 15:'P', 16:'S', 17:'Cl', 35:'Br', 53: 'I'}
-    with open('omega.out','a') as out:
-        with custom_redirection(out):
-            molcoords = Compute3DCoords(rdmol)
-            reorder   = lambda xyz:"{3} {0} {1} {2}".format(*xyz)
-            cartesian = map(reorder, molcoords)
-            xyz       = "\n".join(cartesian)
-            xyz      += '\n\n'
-    return xyz
 
 def xyzfromstring(string):
     # split to get the first line which has the number of atoms

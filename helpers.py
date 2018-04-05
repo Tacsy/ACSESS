@@ -181,8 +181,32 @@ def FinishSelection(lib):
 #       CHEMICAL RELATED
 ########################################
 
+from contextlib import contextmanager
+@contextmanager
+def custom_redirection(fileobj):
+    old = sys.stdout
+    sys.stdout = fileobj
+    try:
+        yield fileobj
+    finally:
+        sys.stdout = old
+
+def xyzfromrdmol(rdmol, string=False):
+    atomN={1:'H', 5:'B',6:'C',7:'N', 8:'O', 9:'F', 14:'Si', 15:'P', 16:'S', 17:'Cl', 35:'Br', 53: 'I'}
+    with open('omega.out','a') as out:
+        with custom_redirection(out):
+            molcoords = Compute3DCoords(rdmol, string=string)
+            if string:
+                xyz       = molcoords
+            else:
+                reorder   = lambda xyz:"{3} {0} {1} {2}".format(*xyz)
+                cartesian = map(reorder, molcoords)
+                xyz       = "\n".join(cartesian)
+                xyz      += '\n\n'
+    return xyz
+
 # calculate 3D coordinate of a molecule using RDKit build-in functions
-def Compute3DCoords(mol):
+def Compute3DCoords(mol, string=False):
     #mol: rdkit RWMol or Mol
     molAddH = Chem.AddHs(mol)
     #calculate mol 3D coordinate
@@ -190,13 +214,13 @@ def Compute3DCoords(mol):
 
     molStr = Chem.MolToMolBlock(molAddH)
     print molStr
+    if string: return molStr
 
     #parse mol string file into list
     molCoords = []
     
     molStr2List = molStr.split('\n')
 
-    print "molStr2List:", molStr2List
     #get number of atoms
     num = int(molStr2List[3].split()[0])
 
@@ -215,3 +239,4 @@ def GetMurckoScaffold(mol):
 
     #return scaffold rdkit.mol object
     return scaffold
+

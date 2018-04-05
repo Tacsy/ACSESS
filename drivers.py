@@ -8,8 +8,8 @@ from rdkithelpers import *
 import mutate
 import filters
 import mprms
-import random
-from output import logtime
+import random, sys
+from output import logtime, StartTimer, EndTimer
 
 ###### mutation probabilities:
 p_BondFlip=0.8
@@ -18,25 +18,22 @@ p_RingAdd=0.1
 p_AddFreq=0.5 #Actual probability: (.8*.7)*.5=.28
 p_DelFreq=0.8 #Actual probability: .224
 p_RingRemove=0.2 #actual probability=.8*.3=.24
+p_AddAroRing=0.1
 MutateStereo=False
 StereoFlip=0.2
 
 ##### workflow switches:
-GenStruc      = 0
 startFilter   = 2
-startTautomer = 10
-startGenStruc = 20
+startTautomer = None
+startGenStruc = 0
 KeepNoGeomPool= True
 
 debug=False
 
 def SetIterationWorkflow(gen):
-    global GenStruc
-    Tautomerizing = (gen>=startTautomer)
-    #if Tautomerizing: cn.CanonicalTautomer=True
-
-    Filter = (gen>= startFilter)
-    GenStruc = (GenStruc and gen>= startGenStruc)
+    Tautomerizing = (startTautomer and gen>= startTautomer)
+    Filter        = (gen>= startFilter  )
+    GenStruc      = (gen>= startGenStruc)
     return Tautomerizing, Filter, GenStruc
 
 
@@ -45,6 +42,7 @@ def DriveMutations(lib):
     nDups, nExcp, nCand=(0,0,0)
     # 1. CROSSOVERS:
     print "crossovers...",
+    sys.stdout.flush()
     newmols=[]
     for i in xrange( min(mprms.nCross, len(lib)-1) ):
         try:
@@ -68,7 +66,8 @@ def DriveMutations(lib):
     if debug: print "nDups after CX:", nDups
 
     # 2. MUTATIONS
-    print "mutations...",
+    print "mutating...",
+    sys.stdout.flush()
     for i in xrange(mprms.nMut):
         if i<mprms.nMut*mprms.EdgeRatio and mprms.EdgeLen>0:
             candidate=Chem.Mol(random.choice(lib[:mprms.EdgeLen]))
@@ -96,57 +95,179 @@ def DriveMutations(lib):
 
     return newmols
 
-@logtime()
-def DriveFilters(lib, Filter=True, GenStrucs=False):
-    if not (Filter or GenStrucs): return lib
-    print "filtering...", 
+
+###############################################
+# Drive filtering
+def DriveFilters(lib, Filtering, GenStrucs):
+    def torwmol(mol):
+        if not type(mol)==Chem.RWMol: return Chem.RWMol(mol)
+        else: return mol
+    lib = map(torwmol, lib)
+
+    nSizeCut,nDups,nFilt=(0,0,0)
+    nbefore=len(lib)
+    #lib=[mol for mol in lib if mol.GetBoolProp('filtered') or not fl.TooBig(mol) ]
+    #nSizeCut += nbefore-len(lib)
+    if not (Filtering or GenStrucs): return lib
+    ####### Parallel filtering ######
+    if Filtering and mprms.mpi:
+        import parallel as pl
+        if GenStrucs:
+            pl.ScatterFixFilterStruc(lib)
+        else:
+            pl.ScatterFixFilter(lib)
+       #################### Serial filtering #####################
+    elif Filtering:
+        print "filtering...", 
+        sys.stdout.flush()
+        StartTimer('Filters')
+        for mol in lib:
+            if not mol.HasProp('filtered'):
+                filters.FixAndFilter(mol)
+                if debug:
+                    if not mol.HasProp('failedfilter'): print "Jos Error",
+                    else: print "ff:", mol.GetProp('failedfilter'),
+            else:
+                assert mol.GetBoolProp('filtered')==True
+                mol.SetProp('failedfilter','')
+        nbefore=len(lib)
+        lib=RemoveDuplicates(lib)
+        nDups+=nbefore-len(lib)
+        EndTimer('Filters')
+
+        #### Generate 3d structures if requested ###
+        if GenStrucs:
+            StartTimer('GenStrucs')
+            print "genstrucs...",
+            sys.stdout.flush()
+            for mol in lib:
+                if ( mol.HasProp('hasstructure') or
+                     mol.GetProp('failedfilter') ): continue
+
+                from helpers import xyzfromrdmol
+                try:
+                    xyz = xyzfromrdmol(mol)
+                    mol.SetProp('hasstructure', xyz)
+                    if filters.GeomFilter(mol)=='SAV':
+                        mol.SetProp('failedfilter','SAV')
+                except NoGeom: #if structure can't be generated, filter it
+                    mol.SetProp('failedfilter',
+                                      'failed to generate geometry')
+                except MutateFatal:
+                    from pprint import pprint as pp
+                    print "Mutate Fatal Error with:", pp(mol.__dict__)
+                    print "smiles:", Chem.MolToSmiles(mol), "end smi"
+                    mol.SetProp('failedfilter',
+                                      'failed to generate geometry')
+                    raise
+            EndTimer('GenStrucs')
+
+    
+    ## Remove filtered compounds from library ##
+    if Filtering:
+        for mol in lib:
+            try:
+                failed=mol.GetProp('failedfilter')
+            except KeyError:
+                print "no failed filter:", Chem.MolToSmiles(mol)
+            if failed:
+                nFilt+=1
+                try:
+                    smi=Chem.MolToSmiles(mol)
+                except NotImplementedError:
+                    smi=mol._smiles
+                filterFile.write(smi + '  ' + failed + '\n')
+        lib=[mol for mol in lib if not mol.GetProp('failedfilter') ]
+        filterFile.flush()
+    return lib
+
+
+def NewDriveFilters(lib, Filter=True, GenStruc=False):
+    if not (Filter or GenStruc): return lib
+    # I assume it makes no sense to do a genstrucs without filtering
 
     # filter by setting the failed attribute True
+    print "filtering...", 
+    sys.stdout.flush()
+    StartTimer('Filters')
     for mol in lib:
         changed, failed = filters.FixAndFilter(mol)
         if debug and failed:
             print "changed:{}, failed:{}, mol:{}".format(changed, failed, Chem.MolToSmiles(mol))
-        mol.SetBoolProp('failed', bool(failed))
+        if not mol.HasProp('failed'):
+            mol.SetBoolProp('failed', bool(failed))# done in FixAndFilter function
         mol.SetBoolProp('filtered', True)
-        if failed in ['unknown', 'False'] or failed==True:
-            failed='unknown'
-        if debug and failed:
+        if failed:
             mol.SetProp('failedfilter', failed)
-            print failed
             filterFile.write(Chem.MolToSmiles(mol) + '  ' + failed + '\n')
+    EndTimer('Filters')
+
+    if GenStruc:
+        StartTimer('GenStrucs')
+        print "genstrucs...",
+        sys.stdout.flush()
+        for mol in lib:
+            if ( mol.HasProp('hasstructure') or
+                 mol.GetBoolProp('failed') ): continue
+            try:
+                from helpers import xyzfromrdmol
+                try:
+                    xyz = xyzfromrdmol(mol)
+                    mol.SetProp('hasstructure', xyz)
+                except Exception as e:
+                    print "error in 3D coordinate construction", e
+                if filters.GeomFilter(mol)=='SAV':
+                    mol.SetProp('failedfilter','SAV')
+                    mol.SetBoolProp('failed', True)
+            except NoGeom: #if structure can't be generated, filter it
+                mol.SetProp('failedfilter', 'failed to generate geometry')
+                mol.SetBoolProp('failed', True)
+            except MutateFatal:
+                from pprint import pprint as pp
+                print "Mutate Fatal Error with:", pp(mol.__dict__)
+                mol.SetProp('failedfilter', 'failed to generate geometry')
+                mol.SetBoolProp('failed', True)
+                raise
+        EndTimer('GenStrucs')
+
     # effective filter step. 
     newmols=filter(lambda mol:not mol.GetBoolProp('failed'), lib)
     if debug: print "    nFiltered:", len(lib)-len(newmols)
     filterFile.flush()
     return newmols
 
-def DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing, gen):
-    global GenStruc
+def DrivePoolFilters(pool, Filtering, GenStruc, Tautomerizing, gen):
     pool = filter(bool, pool)
     if Tautomerizing:
         CanonicalTautomer=True
         if gen==startTautomer:
             print 'tautomerizing pool...',
+            sys.stdout.flush()
             pool = filter(Tautomerize, pool)
-    if GenStrucs and gen==startGenStrucs and not KeepNoGeomPool:
+    if GenStruc and gen==startGenStruc and not KeepNoGeomPool:
         print 'restarting and filtering pool...',
+        sys.stdout.flush()
         pool=[mol for mol in pool if mol.GetBoolProp('hasstructure')]
         DriveFilters(pool, Filtering, GenStruc)
     if (Filtering and gen==startFilter) or (
         GenStruc and gen==startGenStruc and KeepNoGeomPool):
         print 'pool-',
-        pool = DriveFilters(pool, Filtering, GenStrucs)
+        pool = DriveFilters(pool, Filtering, GenStruc)
     return pool
 
 
 @logtime()
 def ExtendPool(pool, lib, newmols):
+    lp1 = len(pool)+len(lib)
     pool=RemoveDuplicates(lib+newmols)
+    lp2 = len(pool)
+    if debug: print "pool: old len:{}, new len:{}".format(lp1, lp2),
     return pool
 
 @logtime()
 def DriveSelection(pool, subsetSize):
     print "selecting...",
+    sys.stdout.flush()
     #1. select maximin algorithm.
     if hasattr(mprms,'metric') :
         from distance import Maximin
@@ -191,12 +312,12 @@ def RemoveDuplicates(lib):
             i1score=GetScore(lib[i-1])
 
             if iscore>=i1score:
-                lib[i].SetProp('selected',
-                    lib[i].GetProp('selected')+lib[i-1].GetProp('selected') )
+                lib[i].SetIntProp('selected',
+                    lib[i].GetIntProp('selected')+lib[i-1].GetIntProp('selected') )
                 lib.pop(i-1)
             else:
-                lib[i-1].SetProp('selected',
-                    lib[i].GetProp('selected')+lib[i-1].GetProp('selected') )
+                lib[i-1].SetIntProp('selected',
+                    lib[i].GetIntProp('selected')+lib[i-1].GetIntProp('selected') )
                 lib.pop(i)
 
         else: i+=1
@@ -232,6 +353,7 @@ def SingleMutate(candidateraw):
     nBreak,    nBreakFail    =(0,0)
     nAdd,      nAddFail      =(0,0)
     nRemove,   nRemoveFail   =(0,0)
+    nAddArRing,nAddArRingFail=(0,0)
 
     parent=candidate.GetProp('isosmi')
     ResetProps(candidate)
@@ -331,6 +453,7 @@ def SingleMutate(candidateraw):
     # 6. remove an atom
     if len(atoms)>1 and random.random() < p_DelFreq:
         if debug: print "6",
+        inismi = Chem.MolToSmiles(candidate)
         nRemove+=1
         Chem.Kekulize(candidate, True)
         atoms= filter(CanRemoveAtom, candidate.GetAtoms())
@@ -339,6 +462,7 @@ def SingleMutate(candidateraw):
                 mutate.RemoveAtom(candidate, random.choice(atoms))
                 Finalize(candidate)
             except Exception as e:
+                print "initial mol:", inismi
                 print "e:", e, "mol:", Chem.MolToSmiles(candidate) 
                 raise MutateFail
             if aromatic: Chem.SetAromaticity(mol)
@@ -346,6 +470,27 @@ def SingleMutate(candidateraw):
         except MutateFail:
             nRemoveFail+=1
         if aromatic: Chem.SetAromaticity(mol)
+
+    # 7. Add aromatic ring
+    if random.random()<p_AddAroRing:
+        freedoublebonds = GetFreeBonds(candidate, order=2, notprop='group')
+        triplebonds     = filter(lambda bond:bond.GetBondType()==bondorder[3], candidate.GetBonds())
+        correctbonds    = freedoublebonds + triplebonds
+        if len(correctbonds)>1:
+            print "n freedoublebonds:", len(correctbonds)
+            if debug: print "7",
+            nAddArRing+=1
+            Chem.Kekulize(candidate, True)
+            try:
+                candidate = mutate.AddArRing(candidate, random.choice(correctbonds))
+                try:Finalize(candidate)
+                except Exception as e:
+                    print "exception in AddArRing with", Chem.MolToSmiles(candidate)
+                    print e
+                    raise MutateFail
+            except MutateFail:
+                nAAddArRingFail+=1
+
 
     # Finally: # necessary? # I believe this is not properly implemented
     # so I skip this error raising

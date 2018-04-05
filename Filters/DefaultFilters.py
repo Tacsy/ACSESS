@@ -51,7 +51,6 @@ DefaultFilters['Too big'].SetFilterRoutine(TooBig)
 def CutMoreRings(mol):
     RI = mol.GetRingInfo()
     if not IsPlanar(mol): return True
-    print "in CutMoreRings",
     nrings,sa,sb=SSSR(mol,force=True)
     if UseRuleOf10 and RuleOf10(mol)>10: return True
     if RI.NumRings()>maxRings: return True
@@ -65,11 +64,11 @@ def CutRings(mol):
     itry=0
     while CutMoreRings(mol):
         itry+=1
-        bondringids = candidate.GetRingInfo().BondRings()
+        bondringids = mol.GetRingInfo().BondRings()
         # need to flatten bondringids:
         # fancy manner to flatten a list of tuples with possible duplicates
         bondringids = set.intersection(*map(set, bondringids))
-        bonds=GetIBonds(bondringids, candidate, notprop='group')
+        bonds=GetIBonds(bondringids, mol, notprop='group')
         #bonds=list(mol.GetBonds(OEAndBond(OEBondIsInRing(),
         #                                  mt.BndNotInGroup)))
         if len(bonds)==0: raise MutateFail()

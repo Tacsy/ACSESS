@@ -39,6 +39,7 @@ Some clearification:
 ActiveFilters = dict()
 FilterFlavor = 'GDB'
 extrafilters = []
+GeomFilter   = lambda x:False
 MAXTRY=10
 SAScore=0.0
 
@@ -47,7 +48,7 @@ SAScore=0.0
 ############################################################
 
 def Init():
-    global ActiveFilters, FilterFlavor
+    global ActiveFilters, FilterFlavor, GeomFilter
 
     # 1. load default filters into ActiveFilters:
     from Filters import DefaultFilters
@@ -59,6 +60,7 @@ def Init():
     # 2. load the main set of filters of either GDB/Druglike/etc.
     if FilterFlavor=='GDB':
         from Filters import GDBFilters as FilterFlavor
+        from Filters.GDBFilters import GeomFilter
     else:
         raise TypeError('FilterFlavor not recognized')
     ActiveFilters.update(FilterFlavor.AllFilters)
@@ -79,12 +81,48 @@ def Init():
     return
 
 def FixAndFilter(mol):
+    changed, filt=FixFilters(mol)
+    if debug and failed:
+        print "changed:{}, failed:{}, mol:{}".format(changed, filt, Chem.MolToSmiles(mol))
+    if changed: Finalize(mol)
+    mol.SetBoolProp('filtered', True)
+    #if filt: print "filt:", filt
+    if type(filt) is bool: filt={True:'unknown', False:''}[filt]
+    mol.SetProp('failedfilter', filt)
+    return changed, filt
+
+def FixFilters(mol):
+    changed=False
+    #if SetSulfurState(mol): changed=True
+    #First, try geometry filter
+    if mol.HasProp('hasstructure'):
+        failure = GeomFilter(mol)
+        if failure: return changed,failure
+
+    lastfailure=''
+    for i in xrange(MAXTRY):
+        #Run through all filters
+        for ft in ActiveFilters:
+            failure=ActiveFilters[ft](mol)
+            if failure: #try to fix the problem
+                try: success=ActiveFilters[ft].Fix(mol)
+                except MutateFail:
+                    success=False
+                    changed=True
+                if not success: return changed,failure
+                else:
+                    changed=True
+                    Finalize(mol)
+                    break #refilter modified compound
+        if i==MAXTRY-1 or (not failure):
+            return changed,failure
+
+
+def NewFixAndFilter(mol):
     changed=False
     if mol is None: return None, True
-    #failure=False
+    elif not type(mol)==Chem.RWMol:mol=Chem.RWMol(mol)
     for i in xrange(MAXTRY):
-        # in old version: here prepare for 2D filters
-        # run through all filters:
         for filtername in ActiveFilters:
             try:
                 failure = ActiveFilters[filtername](mol)
@@ -92,10 +130,6 @@ def FixAndFilter(mol):
                 print "filtername:", filtername
                 print "mol:", Chem.MolToSmiles(mol)
                 raise SystemExit('error')
-            #if filtername=='allene':
-            #    print 'allene', type(ActiveFilters[filtername]), 
-            #    print Chem.MolToSmiles(mol)
-            #    print failure
             mol.SetBoolProp('failed', bool(failure))
             if failure:
                 if debug: print "in F&F:", failure
@@ -108,10 +142,7 @@ def FixAndFilter(mol):
                     return changed, failure
                 else:
                     changed=True
-                    try: Finalize(mol)
-                    except ValueError as e:
-                        print e
-                        return changed, failure
+                    Finalize(mol)
                     break
         if i==MAXTRY-1 or (not failure): #i.e. all filters passed without problems
             return changed, failure

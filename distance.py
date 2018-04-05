@@ -55,6 +55,7 @@ def SetCoords(mol):
         coord = GetListProp(mol, 'coords')
     else:
         coord = Coords(mol)
+        coord = np.nan_to_num(coord)
         SetListProp(mol, 'coords', coord)
     
     return np.array(coord)

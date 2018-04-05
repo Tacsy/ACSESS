@@ -44,6 +44,10 @@ def Sane(mol, *args, **kwargs):
     except:
         return False
 
+#def ToRWMol(mol):
+#    if type(mol)==Chem.RWMol: return mol
+    
+
 ############ NEW RDKIT HELPERS: #########################
 flatten = lambda X:tuple(set(i for x in X for i in x))
 def MolAtIsInGroup(mol, groupid):
@@ -101,6 +105,26 @@ def GetXAtoms(mol, num=6, notprop=None):
     else:
         requirement = lambda atom:atom.GetAtomicNum()==num
     return filter( requirement, mol.GetAtoms())
+
+def GetFreeBonds(mol, order=None, notprop=None):
+    ''' This function is used by aromatic ring addition. It returns the bonds with specified order
+    and on both bond.atoms at least one hydrogen. '''
+    # 1. select bonds with required bondorder
+    if order:
+        IsOrder = lambda bond:bond.GetBondType()==bondorder[order]
+    else:
+        IsOrder = lambda x:True
+    ordbonds  = filter(IsOrder, mol.GetBonds())
+    # 2. select bonds which have at least on H at each atom
+    HasHs= lambda bond:all( atom.GetImplicitValence() for atom in (bond.GetBeginAtom(), bond.GetEndAtom()))
+    withHbonds= filter(HasHs, ordbonds)
+    # 3. test if not has prop notprop
+    if notprop:
+        bonds = filter(lambda bond:not bond.HasProp(notprop), withHbonds)
+    else:
+        bonds = withHbonds
+    return bonds
+
 
 ########## Set List properties
 

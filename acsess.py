@@ -17,6 +17,7 @@ import drivers as dr
 import output
 import objective
 from helpers import DumpMols, FinishSelection
+from distance import AveNNDistance
 iterhead="\n-------------------- Iteration {0} ----------------\n"
 
 def initiate():
@@ -28,9 +29,10 @@ def initiate():
     # 2. Open output
     ##############################
     global openmode
-    if mprms.restart: 
+    if hasattr(mprms, 'restart') and mprms.restart: 
         openmode = 'a'
     else:
+        mprms.restart=False
         openmode = 'w'
     InitiateFileHandlers(openmode)
     ##############################
@@ -80,13 +82,16 @@ def evolve():
  
         # 2.MUTATIONS AND CROSSOVERS
         newlib = dr.DriveMutations(lib)
+        print "after mutations: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
  
         # 3. FILTERS
         newlib = dr.DriveFilters(newlib, Filtering, GenStrucs)
+        print "after filters: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
 
         # 3b. When necessary FilterPool is switching is just set on
         pool   = dr.DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing, gen)
- 
+
+        print "after pool filters: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
         # 4. OBJECTIVE
         if mprms.optimize:
             pool = objective.EvaluateObjective(newlib + pool, gen)
@@ -102,8 +107,13 @@ def evolve():
         else:
             lib = [ mol for mol in pool ]
         FinishSelection(lib)
+
+        # 6. DIVERSITY IS:
+        #siml = NNSimilarity(lib)
+        siml = AveNNDistance(lib)
+        print '\nLIBRARY DIVERSITY: ',siml
  
-        # 6. POSTLOGGING
+        # 7. POSTLOGGING
         if debug:
             with open('mylib','w') as f:
                 for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')

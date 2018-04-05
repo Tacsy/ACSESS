@@ -7,6 +7,7 @@ from rdkit import Chem
 from rdkithelpers import *
 import mprms
 import importlib
+import random
 
 
 ######################################################
@@ -31,8 +32,11 @@ def ReadMPRMS():
             if not restart: print >> myopts,name+'='+str(getattr(mprms,name))
 
     if hasattr(mprms, 'rseed'):
-        import random
         random.seed(mprms.rseed)
+    else:
+        seed = random.randint(1,1000)
+        print "random seed:", seed
+        random.seed(seed)
     if not hasattr(mprms, 'optimize'):
         mprms.optimize=False
 
@@ -111,8 +115,6 @@ def StartLibAndPool(restart):
         else: raise SystemExit('RESTART but no iteration files found')
         supplier = Chem.SmilesMolSupplier(filename, sanitize=False)
         lib = [mol for mol in supplier]
-        setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
-        map(setisosmi, lib)
         print 'RESTARTING calculation from iteration', startiter-1,
         print 'with {} molecules'.format(len(lib))
     #case 2: read from mprms.seedfile
@@ -121,8 +123,6 @@ def StartLibAndPool(restart):
         supplier = Chem.SmilesMolSupplier(seedFile, sanitize=False)
 
         lib = [mol for mol in supplier]
-        setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
-        map(setisosmi, lib)
         print "Seeding with " + str(len(lib)) + " molecules from " + seedFile
 
     #case 3: read from mprms.seedlib
@@ -174,6 +174,10 @@ def StartLibAndPool(restart):
         print 'Initializing pool from library'
         pool = [mol for mol in lib]
 
+    # set isosmi
+    setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
+    map(setisosmi, pool)
+    map(setisosmi, lib)
     ######### sanitize lib & pool
     ll1,lp1= (len(lib), len(pool))
     lib    = filter(Sane, lib)
