@@ -549,8 +549,11 @@ def AddArRing(mol, bond):
     bond.GetBeginAtom().SetBoolProp('ah1', True)
     bond.GetEndAtom().SetBoolProp('ah2', True)
     mol = Chem.RWMol(Chem.CombineMols(mol, butadiene))
-    mol.AddBond( AwithLabel('buta1'), AwithLabel('ah1'), bondorder[1])
-    mol.AddBond( AwithLabel('buta2'), AwithLabel('ah2'), bondorder[1])
+    try:
+        mol.AddBond( AwithLabel('buta1'), AwithLabel('ah1'), bondorder[1])
+        mol.AddBond( AwithLabel('buta2'), AwithLabel('ah2'), bondorder[1])
+    except RuntimeError:
+        raise MutateFail
     print "Finished AddArRing!", Chem.MolToSmiles(mol)
     return mol
 

@@ -18,6 +18,7 @@ import output
 import objective
 from helpers import DumpMols, FinishSelection
 from distance import AveNNDistance
+from similarity import NNSimilarity
 iterhead="\n-------------------- Iteration {0} ----------------\n"
 
 def initiate():
@@ -47,6 +48,7 @@ def InitiateFileHandlers(openmode):
     dr.filterFile = open('filters.dat', openmode)
     convergeFile = open('convergence.dat', openmode)
     statsFile = open('stats.dat', openmode)
+    objective.simstats=open('Fitness.dat','a')
     coordsStdDev = open('stddev.dat', openmode)
     statformat='{0:>7} {1:>8} {2:>8} {3:>10} {4:>10} {5:>10} {6:>11} {7:>7} {8:>9}'
     convergeformat='{0:>8} {1:>13} {2:>12} {3:>13} {4:>10} {5:>10}'
@@ -82,25 +84,23 @@ def evolve():
  
         # 2.MUTATIONS AND CROSSOVERS
         newlib = dr.DriveMutations(lib)
-        print "after mutations: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
  
         # 3. FILTERS
         newlib = dr.DriveFilters(newlib, Filtering, GenStrucs)
-        print "after filters: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
 
         # 3b. When necessary FilterPool is switching is just set on
         pool   = dr.DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing, gen)
 
-        print "after pool filters: len pool: {:d}, len lib: {:d}".format(len(pool), len(lib))
         # 4. OBJECTIVE
         if mprms.optimize:
+            print "acsess.py len(newlib, pool):{} {}".format(len(newlib), len(pool))
             pool = objective.EvaluateObjective(newlib + pool, gen)
         else:
             pool = dr.ExtendPool(pool, lib, newlib)
  
         # 5. SELECTION
         if mprms.optimize:
-            lib, pool = objective.SelectFittest(pool, mprms.subsetSize)
+            lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
         elif len(pool)>mprms.subsetSize:
             #lib = random.sample(pool, mprms.subsetSize)
             lib = dr.DriveSelection(pool, mprms.subsetSize)
@@ -110,7 +110,10 @@ def evolve():
 
         # 6. DIVERSITY IS:
         #siml = NNSimilarity(lib)
-        siml = AveNNDistance(lib)
+        if hasattr(mprms, 'metric'):
+            siml = AveNNDistance(lib)
+        else:
+            siml = NNSimilarity(lib)
         print '\nLIBRARY DIVERSITY: ',siml
  
         # 7. POSTLOGGING

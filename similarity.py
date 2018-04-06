@@ -23,7 +23,7 @@ mcode = None
 fpcode = None
 mfunc = None
 
-def FPInit():
+def Init():
 
     global mcode, fpcode, mfunc
     

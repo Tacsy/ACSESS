@@ -14,9 +14,17 @@ aromatic=False
 
 ############ FROM CANONICAL #############################
 def Finalize(mol, CanonicalTautomer=False):
+    ''' This function makes sure that a new mutated/crossover/fixfilter molecule:
+        - corrects the implicit valence
+        - removes data from parent molecules.
+        - optionally converts the molecule to its canonical tautomer
+        - checks if it is a valid molecule, i.e. Sanitize step. (without aromaticity)
+    '''
+    mol.UpdatePropertyCache()
     if type(mol)==Chem.RWMol:
         RW=True
     else:RW=False
+    ResetProps(mol)
     if CanonicalTautomer:
         Tautomerize(mol)
     try: Sanitize(mol)
@@ -25,19 +33,26 @@ def Finalize(mol, CanonicalTautomer=False):
             for item in traceback.extract_stack(): print item
         print "Error in Finalize with", Chem.MolToSmiles(mol, False), e
     #Chem.SetAromaticity(mol)
-    ResetProps(mol)
-    mol.UpdatePropertyCache()
     return
 
 def ResetProps(mol):
-    # should 'isosmi' be included?
+    ''' makes a fresh molecule without properties inherited from there parents
+        by deleting all listed properties and resetting the SMILES string. '''
     isosmi = Chem.MolToSmiles(mol, True)
-    for prop in [ 'filtered', 'hasstructure', 'tautomerized', 'minimized', 'selected', 'failed' ]:
+    for prop in [ 'filtered', 
+            'hasstructure', 
+            'tautomerized', 
+            'minimized', 
+            'selected', 
+            'failed',
+            'failedfilter',
+            'Objective']:
         mol.ClearProp(prop)
     mol.SetProp('isosmi',isosmi)
     return
 
 def Sane(mol, *args, **kwargs):
+    ''' A SanitizeCheck function; function returns False if molecule is not sane '''
     try:
         Sanitize(mol, *args, **kwargs)
         return True
@@ -129,6 +144,9 @@ def GetFreeBonds(mol, order=None, notprop=None):
 ########## Set List properties
 
 def SetListProp(mol, name, iterable):
+    ''' Since rdkit molecules can only store single values, list properties 
+    are stored as strings. Values are separated by a space
+    NB: float precision is hardcoded to 20 decimals'''
     string = ' '.join(['{:.20f}'.format(x) for x in iterable])
     mol.SetProp(name, string)
 def GetListProp(mol, name):
@@ -138,6 +156,7 @@ def GetListProp(mol, name):
 ########## function potentially useful to avoid aromaticity
 
 def Sanitize(mol, aromatic=False):
+    '''The rdkit sanitize step with the option to switch off aromaticity'''
     if aromatic:
         Chem.SanitizeMol(mol)
     else:

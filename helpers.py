@@ -8,6 +8,7 @@ import gzip
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from molfails import NoGeom
 
 '''
 this is the helper module that contains helping functions that relates to
@@ -206,11 +207,26 @@ def xyzfromrdmol(rdmol, string=False):
     return xyz
 
 # calculate 3D coordinate of a molecule using RDKit build-in functions
-def Compute3DCoords(mol, string=False):
+def Compute3DCoords(mol, string=False, ff='MMFF'):
+    ''' different types of 3D coordinate acquisition are available
+    here the ETKDG / UFF / MMFF are provided.
+    '''
+
     #mol: rdkit RWMol or Mol
     molAddH = Chem.AddHs(mol)
-    #calculate mol 3D coordinate
-    AllChem.EmbedMolecule(molAddH, AllChem.ETKDG())
+
+    try:
+        if ff=='ETKDG':
+            #calculate mol 3D coordinate
+            AllChem.EmbedMolecule(molAddH, AllChem.ETKDG())
+        elif ff=='UFF':
+            AllChem.EmbedMolecule(molAddH)
+            AllChem.UFFOptimizeMolecule(molAddH)
+        elif ff=='MMFF':
+            AllChem.EmbedMolecule(molAddH)
+            AllChem.MMFFOptimizeMolecule(molAddH)
+        else: raise TypeError('force field not recognized')
+    except ValueError: raise NoGeom
 
     molStr = Chem.MolToMolBlock(molAddH)
     print molStr

@@ -48,9 +48,13 @@ def ReadMPRMS():
     _modules = ['mutate', 
                 'filters', 'Filters.DefaultFilters',
                 'drivers',
-                'distance',
                 'rdkithelpers']
-    if mprms.optimize: _modules.append('objective')
+    if hasattr(mprms, 'metric'):
+        _modules.append('distance')
+    else:
+        _modules.append('similarity')
+    if mprms.optimize:
+        _modules.append('objective')
 
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:

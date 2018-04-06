@@ -35,7 +35,8 @@ def Init():
 def calculate(rdmols, run, QH2=False, gen=0):
     # -2 prepare optionally for logging to file
     global table
-    print "len(table)".format(len(table)),
+    print "len(table):{}".format(len(table)),
+    print "n rdmols:{}".format(len(rdmols))
     if len(table)<10: print table
 
     # -1 imports

@@ -6,11 +6,12 @@ import sys
 import os
 import mprms
 from rdkit import Chem
+from rdkithelpers import *
+import distance, output
 
 minimize=False #Minimizing or maximizing the objective function?
 compGeom=False #Does objective function require 3d structure?
 TargetScore=None
-TargetScoreOss=None
 NeighborhoodMaximin=True
 FixedCutoff=False
 InitialCutoff=0.0
@@ -24,6 +25,8 @@ CINDES_interface=False
 CINDES_run=None
 debug=False
 OBDatabase=None
+NumIn=None
+NumOut=None
 
 #Initialize module
 def Init():
@@ -63,7 +66,9 @@ def ComputeObjectives(mols_tocalc, gen=0):
                 
 #Make sure all objective function values are calculated
 def UpdateObjective(mylib, gen=0):
+    print "UpdateObjective len(mylib):{}".format(len(mylib)),
     mols_tocalc=[ mol for mol in mylib if not mol.HasProp('Objective') ]
+    print "n mols_tocalc:", len(mols_tocalc)
 
     print 'Computing Objective...'
     ComputeObjectives(mols_tocalc, gen)
@@ -76,6 +81,7 @@ def UpdateObjective(mylib, gen=0):
 # Remove compounds below the threshold
 # Returns both picked compounds (as library) and unpicked compounds (as pool)
 def EvaluateObjective(totallib, gen):
+    global NumIn, NumOut
     nGen     = mprms.nGen
     NumIn    = len(totallib)
 
@@ -89,23 +95,26 @@ def EvaluateObjective(totallib, gen):
         cutoff=TargetScore
     else:
         cutoff=InitialCutoff + (TargetScore-InitialCutoff)*( gen*1.0)/(nGen*SaturateAt)
+    #for mol in totallib: print mol.GetDoubleProp('Objective')
     newpool = [ mol for mol in totallib if mol.GetDoubleProp('Objective')*minsign <= cutoff*minsign ]
     NumOut=len(newpool)
+    print "current cutoff:", cutoff, 'minsign:', minsign
     if NumOut==0:
         raise ValueError('No compounds left after cutoff!')
     print 'Removed',NumIn-NumOut,'compounds using objective function threshold'
 
     return newpool
 
-def SelectFittest(newpool, subsetSize):
+def SelectFittest(newpool, subsetSize, gen):
+    global NumIn, NumOut, sumhelper
     if len(newpool)>subsetSize+TakeFittest:
         mostfit = newpool[0:TakeFittest]
         pool = newpool[TakeFittest:]   ###at this point pool is updated so that only compounds satisfying fitness stay
         nSwap=0
 
-        dt.ScatterCoords( pool )
+        distance.ScatterCoords( pool )
 
-        coords=np.array( [ mol.GetProp('coords') for mol in pool ] )
+        coords=np.array( [ GetListProp(mol, 'coords') for mol in pool ] )
         scores=np.ma.array( [mol.GetDoubleProp('Objective') for mol in pool] )
 	if sumhelper is None: sumhelper=np.ones(len(coords[0]))
 
@@ -113,15 +122,16 @@ def SelectFittest(newpool, subsetSize):
         if subsetSize<=0: return mostfit,[],newpool
 
         #Select a sample subset
-        picks=dt.FastMaximin(coords,subsetSize)
+        #picks=distance.FastMaximin(coords, subsetSize)
+        picks=distance.Maximin(coords, subsetSize)
         
         templib=[ pool[i] for i in picks ]
-        if dt.NormCoords:
-            coords=coords/dt.GetStdDevs( templib )
+        if distance.NormCoords:
+            coords=coords/distance.GetStdDevs( templib )
 
-        oput.StartTimer('NN DIST CALC')
-        AveDistSqr=dt.AveNNDistance(templib)
-        oput.EndTimer('NN DIST CALC')
+        output.StartTimer('NN DIST CALC')
+        AveDistSqr=distance.AveNNDistance(templib)
+        output.EndTimer('NN DIST CALC')
 
         print 'Average libary score before optimization: ',sum(
             m.GetDoubleProp('Objective') for m in templib )/(
@@ -135,7 +145,7 @@ def SelectFittest(newpool, subsetSize):
         targetmask = np.ma.getmask( np.ma.masked_greater(
                     scores*minsign , TargetScore*minsign )) 
 
-        oput.StartTimer("OBJECTIVE MXMN")
+        output.StartTimer("OBJECTIVE MXMN")
         print 'Optimizing library ...',
         newlib=[]
 
@@ -186,7 +196,7 @@ def SelectFittest(newpool, subsetSize):
         print 'swapped',nSwap,'/',len(newlib),'compounds'
         print 'Average libary score after optimization: ',
         
-        oput.EndTimer('OBJECTIVE MXMN')
+        output.EndTimer('OBJECTIVE MXMN')
     else:
        newlib=newpool
        mostfit=[]
@@ -203,6 +213,6 @@ def SelectFittest(newpool, subsetSize):
     simstats.flush()
 
     newlib += mostfit
-    newlib.sort( key=lambda x:x.GetDoubleProp('Objective'), reverse=not ob.minimize)
+    newlib.sort( key=lambda x:x.GetDoubleProp('Objective'), reverse=not minimize)
     return newlib, newpool
 

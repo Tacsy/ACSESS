@@ -184,6 +184,7 @@ AllFilters['atomcounts'].SetFixRoutine(FixAtomQuantities)
 AllFilters['triple bond in ring']=NewFilter('triple bond in ring')
 
 def TripleBondInRing(mol):
+    ntripleinlargering=0
     Chem.Kekulize(mol)
     for bond in mol.GetBonds():
         if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
@@ -193,7 +194,9 @@ def TripleBondInRing(mol):
                 if aromatic: Chem.SetAromaticity(mol)
                 return "triple bond in ring"
             else:
-                print "triple bond in large ring:", Chem.MolToSmiles(mol)
+                ntripleinlargering+=1
+                if ntripleinlargering>1:return "more than one triple bond in large ring"
+                #print "triple bond in large ring:", Chem.MolToSmiles(mol)
     if aromatic: Chem.SetAromaticity(mol)
     return False
 AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)

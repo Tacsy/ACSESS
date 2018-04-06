@@ -14,6 +14,8 @@ import mongoserver
 import output
 
 metric=None
+NormCoords=False
+
 '''
 this module include various previous modules that corresponds to chemical space
 representation and selection, including:
@@ -43,7 +45,7 @@ def Init():
     elif metric == 'autocorr2D':
         from molproperty import AutoCorr2D as Coords
     elif metric is None:
-        raise SystemExit('No coordinate system set!')
+        print 'No coordinate system set!, so Similarity measures will be used!'
     else:
         raise KeyError('Unknown metric specified in parameter file: ' + metric)
 
@@ -57,7 +59,6 @@ def SetCoords(mol):
         coord = Coords(mol)
         coord = np.nan_to_num(coord)
         SetListProp(mol, 'coords', coord)
-    
     return np.array(coord)
 
 # Drive MPI coordinate calculation
@@ -84,7 +85,7 @@ def ScatterCoords(mols):
         myMongo = mongo.LookupDB(metric, needSMI)
         for v, m in zip(myMongo, needCalc):
             if v is not None:
-                m.SetProp('coords', v)
+                SetListProp(m, 'coords', v)
 
         oldn = len(needCalc)
         needCalc = [mol for mol in mols if not mol.HasProp('coords')]
@@ -99,12 +100,12 @@ def ScatterCoords(mols):
     coords = pl.MyTask.RunMPI(needCalc)
 
     for coord, mol in zip(coords, needCalc):
-        mol.SetProp('coords', coord)
+        SetListProp(mol, 'coords', coord)
 
     # Update values in mongo database
     if mprms.UseMongo:
         needSMI = [Chem.MolToSmiles(mol) for mol in needCalc]
-        mongo.UpdateDB(metric, {s: m.GetProp('coords') for s, m in zip(needSMI, needCalc)})
+        mongo.UpdateDB(metric, {s: GetListProp(m, 'coords') for s, m in zip(needSMI, needCalc)})
         print '%d new memorized coordinate values' %len(needCalc)
 
     output.EndTimer('COORDS')
@@ -139,9 +140,11 @@ def GetStdDevs(mols):
 def HandleMolCoords(mols,std_dev=None,norm=True):
     #assemble distance vectors
     if type(mols) == np.ndarray:
+        print 100
         coords = mols
         passMols = False
     else:
+        print 200
         passMols = True
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])
@@ -159,7 +162,11 @@ def HandleMolCoords(mols,std_dev=None,norm=True):
             return passMols, (coords-avgs)/std_dev
         #normalize coordinates by their std_dev
         else:
-            avgs = np.average(coords,axis=0)
+            try:
+                avgs = np.average(coords,axis=0)
+            except TypeError:
+                print coords
+                raise
             std_dev = GetStdDevs(mols)
             return passMols, (coords-avgs)/std_dev
 

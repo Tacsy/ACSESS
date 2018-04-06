@@ -54,8 +54,9 @@ def Init():
     from Filters import DefaultFilters
     ActiveFilters.update(DefaultFilters.DefaultFilters)
     if SAScore:
-        ActiveFilters['SAScore']=SAScoreFilter
-        SAScore.Init()
+        from Filters import SAS
+        ActiveFilters['SAScore']=DefaultFilters.SAScoreFilter
+        #SAS.Init()
 
     # 2. load the main set of filters of either GDB/Druglike/etc.
     if FilterFlavor=='GDB':

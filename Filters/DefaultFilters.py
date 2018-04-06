@@ -21,6 +21,7 @@ maxRings=8
 maxRingSize=8
 RingSizeExceptions=1
 UseRuleOf10=False
+SAScore=0.0
 
 ############ FILTERS
 
@@ -169,12 +170,9 @@ RuleOf10Filter.SetFilterRoutine(r10f_routine)
 SAScoreFilter=NewFilter("SA-Score synthetic accessibility")
 def sascore_filt(mol):
     import os
-    score=sa.SAScore(mol)
-    if sa.SARescale:
-        condition = score>SAScore
-    else:
-        condition = score<SAScore
-    if condition:
+    import SAS as sa
+    score=sa.CalcSAScore(mol)
+    if score>SAScore:
         return 'SAScore: '+str(score)
     else:
         return False

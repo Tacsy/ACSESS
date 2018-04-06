@@ -18,7 +18,7 @@ p_RingAdd=0.1
 p_AddFreq=0.5 #Actual probability: (.8*.7)*.5=.28
 p_DelFreq=0.8 #Actual probability: .224
 p_RingRemove=0.2 #actual probability=.8*.3=.24
-p_AddAroRing=0.1
+p_AddAroRing=0.5 #actual probability is rather low sing free double bonds aren't prevalent
 MutateStereo=False
 StereoFlip=0.2
 
@@ -27,6 +27,9 @@ startFilter   = 2
 startTautomer = None
 startGenStruc = 0
 KeepNoGeomPool= True
+
+##### other variables
+maxPool       = 1000
 
 debug=False
 
@@ -138,11 +141,13 @@ def DriveFilters(lib, Filtering, GenStrucs):
         #### Generate 3d structures if requested ###
         if GenStrucs:
             StartTimer('GenStrucs')
-            print "genstrucs...",
+            print "genstrucs..."
             sys.stdout.flush()
-            for mol in lib:
-                if ( mol.HasProp('hasstructure') or
-                     mol.GetProp('failedfilter') ): continue
+            for i, mol in enumerate(lib):
+                sys.stdout.write("{}%\r".format(int( 100*i/len(lib))))
+                sys.stdout.flush()
+                if ( mol.HasProp('hasstructure') or mol.GetProp('failedfilter') ):
+                    continue
 
                 from helpers import xyzfromrdmol
                 try:
@@ -257,12 +262,25 @@ def DrivePoolFilters(pool, Filtering, GenStruc, Tautomerizing, gen):
 
 
 @logtime()
-def ExtendPool(pool, lib, newmols):
-    lp1 = len(pool)+len(lib)
-    pool=RemoveDuplicates(lib+newmols)
-    lp2 = len(pool)
-    if debug: print "pool: old len:{}, new len:{}".format(lp1, lp2),
-    return pool
+def ExtendPool(pool, lib, newmol):
+    def key(x):
+        if not x.HasProp('selected'): x.SetIntProp('selected', 0)
+        return x.GetIntProp('selected')
+    from random import shuffle
+    if len(pool)+len(newmol) <= maxPool:
+        pool += newmol
+        return RemoveDuplicates(pool)
+    else:
+        newpool = RemoveDuplicates(newmol+lib)#this is the minumum pool content
+        if len(newpool) < maxPool:
+            shuffle(pool)
+            oldpool=sorted( set(pool) - set(lib) ,
+                            key=key,
+                            reverse=True)
+            newpool = newpool + oldpool[:maxPool-len(newpool) ]
+        return RemoveDuplicates(newpool)
+
+
 
 @logtime()
 def DriveSelection(pool, subsetSize):
@@ -271,17 +289,10 @@ def DriveSelection(pool, subsetSize):
     #1. select maximin algorithm.
     if hasattr(mprms,'metric') :
         from distance import Maximin
+        lib = Maximin(pool, mprms.subsetSize)
     else:
-        from similarity import Maximin
-
-    #2. select
-    answer = Maximin(pool, mprms.subsetSize)
-    if type(answer)==tuple:
-        siml=answer[0]
-        lib=answer[1]
-    else:
-        lib=answer
-
+        from similarity import FPMaximin
+        lib = FPMaximin(pool, mprms.subsetSize)
     return lib
 
 
@@ -354,6 +365,7 @@ def SingleMutate(candidateraw):
     nAdd,      nAddFail      =(0,0)
     nRemove,   nRemoveFail   =(0,0)
     nAddArRing,nAddArRingFail=(0,0)
+    nNoMutation              =0
 
     parent=candidate.GetProp('isosmi')
     ResetProps(candidate)
@@ -488,18 +500,15 @@ def SingleMutate(candidateraw):
                     print "exception in AddArRing with", Chem.MolToSmiles(candidate)
                     print e
                     raise MutateFail
+                return candidate
             except MutateFail:
-                nAAddArRingFail+=1
+                nAddArRingFail+=1
 
 
-    # Finally: # necessary? # I believe this is not properly implemented
-    # so I skip this error raising
-    #if not change:
-    #    nNoMutation+=1
-    #    raise MutateFail()
-    if Chem.MolToSmiles(candidate)=='O=c1[nH][nH]ccc1=S': print "HERE!"
-    #if Chem.MolToSmiles(candidate)=='ccc(cc(c)CC)COC': print "HERE!b"
-    if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
+    if not change:
+        nNoMutation+=1
+        raise MutateFail()
+    #if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
     return candidate
 
 
