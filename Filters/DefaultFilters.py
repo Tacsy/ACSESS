@@ -76,7 +76,7 @@ def CutRings(mol):
         mutate.RemoveBond(mol, random.choice(bonds))
         if mol.HasProp('ringcount'): mol.ClearProp('ringcount')
         changed=True
-        if itry >= mt.MAXTRY: raise MutateFail()
+        if itry >= mutate.MAXTRY: raise MutateFail()
     return changed
 
 DefaultFilters['Non-planar graph (Euler critereon)']=NewFilter('Non-planar graph (Euler critereon)')
