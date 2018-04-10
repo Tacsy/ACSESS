@@ -241,6 +241,7 @@ def Compute3DCoords(mol, string=False, ff='MMFF'):
     num = int(molStr2List[3].split()[0])
 
     for i in xrange(4,4+num):
+        # x, y, z, atomname format
         coords = molStr2List[i].split()[0:4]
         molCoords.append(coords)
 
