@@ -15,6 +15,7 @@ import mprms
 import init
 import drivers as dr
 import output
+from output import stats
 import objective
 from helpers import DumpMols, FinishSelection
 from distance import AveNNDistance
@@ -47,13 +48,13 @@ def InitiateFileHandlers(openmode):
     global convergeFile, statsFile, coordsStdDev, statformat, convergeformat
     dr.filterFile = open('filters.dat', openmode)
     convergeFile = open('convergence.dat', openmode)
-    statsFile = open('stats.dat', openmode)
+    output.statsFile = open('stats.dat', openmode)
     objective.simstats=open('Fitness.dat','a')
     coordsStdDev = open('stddev.dat', openmode)
     statformat='{0:>7} {1:>8} {2:>8} {3:>10} {4:>10} {5:>10} {6:>11} {7:>7} {8:>9}'
     convergeformat='{0:>8} {1:>13} {2:>12} {3:>13} {4:>10} {5:>10}'
     if not mprms.restart:
-        print >> statsFile, statformat.format("#Gen","TooBig","Mutants",
+        print >> output.statsFile, statformat.format("#Gen","TooBig","Mutants",
                                       "FailedMut","Undiverse","Filtered",
                                       "Duplicates","Unfit","PoolSize")
         print >> convergeFile, convergeformat.format(
@@ -78,6 +79,7 @@ def evolve():
  
         # 1. PRELOGGING
         print iterhead.format(gen)
+        stats.update({'gen':gen, 'nPool':len(pool), 'nLib':len(lib)})
         if debug:
             print "startiter:", startiter
             print "len lib:", len(lib)
@@ -125,7 +127,10 @@ def evolve():
         if gen % mprms.writeInterval==0 or gen==mprms.nGen-1:
             DumpMols(lib, gen)
             DumpMols(pool)
+        stats['diversity']=siml
         output.PrintTimings()
+        output.PrintStat()
+
     output.PrintTotalTimings()
     print "DONE"
     return

@@ -9,7 +9,7 @@ import mutate
 import filters
 import mprms
 import random, sys
-from output import logtime, StartTimer, EndTimer
+from output import logtime, StartTimer, EndTimer, stats
 
 ###### mutation probabilities:
 p_BondFlip=0.8
@@ -42,6 +42,7 @@ def SetIterationWorkflow(gen):
 
 @logtime()
 def DriveMutations(lib):
+    global stats
     nDups, nExcp, nCand=(0,0,0)
     # 1. CROSSOVERS:
     print "crossovers...",
@@ -59,14 +60,13 @@ def DriveMutations(lib):
             if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
             Finalize(candidate, aromatic=False)
             newmols.append(candidate)
-            nCand+=1
-        except MutateFail: nExcp+=1
+            stats['nCand']+=1
+        except MutateFail: stats['nExcp']+=1
     newmols=filter(Sane, newmols)
 
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
-    nDups+=nbefore-len(newmols)
-    if debug: print "nDups after CX:", nDups
+    stats['nDups']+=nbefore-len(newmols)
 
     # 2. MUTATIONS
     print "mutating...",
@@ -85,13 +85,12 @@ def DriveMutations(lib):
             except Exception as e:
                 raise MutateFail(candidate)
             newmols.append(candidate)
-            nCand+=1
-        except MutateFail: nExcp+=1
+            stats['nCand']+=1
+        except MutateFail: stats['nExcp']+=1
     newmols=filter(Sane, newmols)
     nbefore=len(newmols)
     newmols=RemoveDuplicates(newmols)
-    nDups=nbefore-len(newmols)
-    if debug: print "nDups after MUs:", nDups
+    stats['nDups']=nbefore-len(newmols)
     if debug:
         with open('mutatelib','w') as f:
             for mol in newmols: f.write(Chem.MolToSmiles(mol)+'\n')
@@ -102,12 +101,13 @@ def DriveMutations(lib):
 ###############################################
 # Drive filtering
 def DriveFilters(lib, Filtering, GenStrucs):
+    global stats
     def torwmol(mol):
         if not type(mol)==Chem.RWMol: return Chem.RWMol(mol)
         else: return mol
     lib = map(torwmol, lib)
 
-    nSizeCut,nDups,nFilt=(0,0,0)
+    #nSizeCut,nDups,nFilt=(0,0,0)
     nbefore=len(lib)
     #lib=[mol for mol in lib if mol.GetBoolProp('filtered') or not fl.TooBig(mol) ]
     #nSizeCut += nbefore-len(lib)
@@ -135,7 +135,7 @@ def DriveFilters(lib, Filtering, GenStrucs):
                 mol.SetProp('failedfilter','')
         nbefore=len(lib)
         lib=RemoveDuplicates(lib)
-        nDups+=nbefore-len(lib)
+        stats['nDups']+=nbefore-len(lib)
         EndTimer('Filters')
 
         #### Generate 3d structures if requested ###
@@ -177,7 +177,7 @@ def DriveFilters(lib, Filtering, GenStrucs):
             except KeyError:
                 print "no failed filter:", Chem.MolToSmiles(mol)
             if failed:
-                nFilt+=1
+                stats['nFilt']+=1
                 try:
                     smi=Chem.MolToSmiles(mol)
                 except NotImplementedError:
@@ -303,9 +303,11 @@ def SingleMutate(candidateraw):
 
     if candidateraw is None: raise ValueError('candidate is none')
     else: candidate = Chem.RWMol(candidateraw)
+    global stats
     #global nAdd,nAddFail,nRemove,nRemoveFail,nBreak,nBreakFail,\
     #       nNewRing,nNewRingFail,nFlip,nFlipFail,nAtomType,nAtomTypeFail,\
     #       nNoMutation
+
     nFlip,     nFlipFail     =(0,0)
     nAtomType, nAtomTypeFail =(0,0)
     nNewRing,  nNewRingFail  =(0,0)
@@ -334,7 +336,7 @@ def SingleMutate(candidateraw):
     bonds=list( GetBonds(candidate, notprop='group') )
     if random.random()<p_BondFlip and len(bonds)>0:
         if debug: print "1",
-        nFlip+=1
+        stats['nFlip']+=1
         try:
             Chem.Kekulize(candidate, True)
             bonds=list( GetBonds(candidate, notprop='group') )
@@ -342,13 +344,13 @@ def SingleMutate(candidateraw):
             Finalize(candidate, aromatic=False)
             return candidate
         except MutateFail:
-            nFlipFail+=1
+            stats['nFlipFail']+=1
 
     # 2. Flip atom identity
     atoms=filter(CanChangeAtom, candidate.GetAtoms())
     if random.random()<p_AtomFlip and len(atoms)>0:
         if debug: print "2",
-        nAtomType+=1
+        stats['nAtomType']+=1
         try:
             mutate.SwitchAtom(candidate,random.choice(atoms))
             try: 
@@ -357,20 +359,20 @@ def SingleMutate(candidateraw):
                 raise MutateFail
             return candidate
         except MutateFail:
-            nAtomTypeFail+=1
+            stats['nAtomTypeFail']+=1
 
     # 3. add a ring - either a new aromatic ring, or bond
     # Aromatic ring addition disabled - probably not necessary
     if random.random()<p_RingAdd:
         if debug: print "3",
-        nNewRing+=1
+        stats['nNewRing']+=1
         try:
             mutate.AddBond(candidate)
             try: Finalize(candidate, aromatic=False)
             except: raise MutateFail
             return candidate
         except MutateFail:
-            nNewRingFail+=1
+            stats['nNewRingFail']+=1
 
     # 4. Try to remove a bond to break a cycle
     if random.random() < p_RingRemove:
@@ -382,7 +384,7 @@ def SingleMutate(candidateraw):
             bondringids = set.intersection(*map(set, bondringids))
             bonds=GetIBonds(bondringids, candidate, notprop='group')
         else: bonds=[]
-        nBreak+=1
+        stats['nBreak']+=1
         if len(bonds) != 0:
             mutate.RemoveBond(candidate,random.choice(bonds))
             try: Finalize(candidate, aromatic=False)
@@ -392,27 +394,27 @@ def SingleMutate(candidateraw):
                 raise MutateFail
             return candidate
         else:
-            nBreakFail+=1
+            stats['nBreakFail']+=1
 
     # 5. add an atom
     atoms = GetAtoms(candidate, notprop='protected')
     bonds = GetBonds(candidate, notprop='group'    )
     if ( random.random() < p_AddFreq and len(atoms)+len(bonds)>0 ):
         if debug: print "5",
-        nAdd+=1
+        stats['nAdd']+=1
         try:
             mutate.AddAtom(candidate,random.choice(atoms+bonds))
             try: Finalize(candidate, aromatic=False)
             except: raise MutateFail
             return candidate
         except MutateFail:
-            nAddFail+=1
+            stats['nAddFail']+=1
 
     # 6. remove an atom
     if len(atoms)>1 and random.random() < p_DelFreq:
         if debug: print "6",
         inismi = Chem.MolToSmiles(candidate)
-        nRemove+=1
+        stats['nRemove']+=1
         Chem.Kekulize(candidate, True)
         atoms= filter(CanRemoveAtom, candidate.GetAtoms())
         try:
@@ -425,7 +427,7 @@ def SingleMutate(candidateraw):
                 raise MutateFail
             return candidate
         except MutateFail:
-            nRemoveFail+=1
+            stats['nRemoveFail']+=1
 
     # 7. Add aromatic ring
     if random.random()<p_AddAroRing:
@@ -435,7 +437,7 @@ def SingleMutate(candidateraw):
         if len(correctbonds)>1:
             print "n freedoublebonds:", len(correctbonds)
             if debug: print "7",
-            nAddArRing+=1
+            stats['nAddArRing']+=1
             Chem.Kekulize(candidate, True)
             try:
                 candidate = mutate.AddArRing(candidate, random.choice(correctbonds))
@@ -446,11 +448,10 @@ def SingleMutate(candidateraw):
                     raise MutateFail
                 return candidate
             except MutateFail:
-                nAddArRingFail+=1
-
+                stats['nAddArRingFail']+=1
 
     if not change:
-        nNoMutation+=1
+        stats['nNoMutation']+=1
         raise MutateFail()
     #if type(candidate)==Chem.RWMol: candidate=candidate.GetMol()
     return candidate

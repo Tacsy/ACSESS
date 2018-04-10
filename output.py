@@ -11,21 +11,32 @@ debug=False
 # Statistics function
 ##########################
 
-statistics = {}
-def PrintStat(nColumn, flush=True):
-    global statistics
-    if len(statistics) == 0:
+statsHead = "\n\tSTATISTICS:"
+
+from collections import defaultdict
+default = lambda:0
+default.__name__='lambda:0'
+stats=defaultdict(default)
+
+def PrintStat(nColumn=4, flush=True):
+    global stats
+    if len(stats) == 0:
         return
-    PrintDict(statistics, nColumn)
+    print statsHead
+    keys = PrintDict(stats, nColumn, sort='key')
+    for key in keys:
+        statsFile.write(" {} ".format(stats[key]))
+    statsFile.write("\n")
+        
     if flush:
-        statistics = {}
-    sys.stdout.flush()
+        sys.stdout.flush()
+        stats.clear()
 
 ##########################
 # Timer function
 ##########################
 
-timingHead = "\n    TIMINGS:"
+timingHead = "\n\tTIMINGS:"
 totalTimingHead = """\n
 --------------------------------------------------------
                         TOTAL TIMINGS:              
@@ -105,9 +116,11 @@ def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
     if sort != False:
         if sort == 'val':
             idx = 1
+            reverse=True
         elif sort  == 'key':
             idx = 0
-        keys, values = zip(*sorted(mydict.items(), key = lambda x: -x[idx]))
+            reverse=False
+        keys, values = zip(*sorted(mydict.items(), key = lambda x: x[idx], reverse=reverse))
         keys = list(keys)
         values = list(values)
     else:
@@ -136,5 +149,6 @@ def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
         print valformat.format(*values[i:i+nColumn])
 
     sys.stdout.flush()
+    return keys
 
 
