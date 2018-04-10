@@ -1,3 +1,6 @@
 # ignore all complied .pyc file
 *.pyc
 *.swp
+
+# ignore my testrun part
+/Examples/testRun_Xuyan/*
