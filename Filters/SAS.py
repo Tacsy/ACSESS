@@ -35,7 +35,7 @@ def CalcSAScore(rmol):
     if _fscores is None:
         ReadFragScores()
     mol = copy.deepcopy(rmol)
-    Chem.SanitizeMol(mol)
+    #Chem.SanitizeMol(mol) # gives crashes!
     
     #fragment score
     fp = AllChem.GetMorganFingerprint(mol,

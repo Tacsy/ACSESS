@@ -140,11 +140,9 @@ def GetStdDevs(mols):
 def HandleMolCoords(mols,std_dev=None,norm=True):
     #assemble distance vectors
     if type(mols) == np.ndarray:
-        print 100
         coords = mols
         passMols = False
     else:
-        print 200
         passMols = True
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])

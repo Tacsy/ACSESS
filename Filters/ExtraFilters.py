@@ -3,18 +3,25 @@
 from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
 from rdkithelpers import *
+from copy import deepcopy
 
 ExtraFilters=dict()
 
 # EXTRA AROMATICITY FILTER
 ExtraFilters['aromatic']=NewFilter('aromatic')
-def HasAromaticity(mol):
+def HasAromaticity(oldmol):
+    mol = deepcopy(oldmol)
+    try:
+        Chem.SetAromaticity(mol)
+    except Exception as e:
+        print "in HasAromaticity:", Chem.MolToSmiles(mol), e
+        return e
     a = Chem.MolFromSmarts("C1=C-C=C-C=C1")
     b = Chem.MolFromSmarts("c1ccccc1")
     #if mol.HasSubstructMatch(a) or mol.HasSubstructMatch(b):
     if len(mol.GetAromaticAtoms()) or mol.HasSubstructMatch(a):
         return False
-    return True
+    return 'not aromatic'
 ExtraFilters['aromatic'].SetFilterRoutine(HasAromaticity)
 #########################
 
@@ -52,7 +59,7 @@ ExtraFilters['qiu2'].SetFilterRoutine(CheckBondOrder)
 
 ExtraFilters['quinoid']=NewFilter('notquinoid')
 def findQuinoid(mol, strict=False):
-    Chem.Kekulize(mol, True)
+    #Chem.Kekulize(mol, True)
 
     # quionoid matches
     # the 12 match urges for at least one extra conjugated bond that is not terminal
@@ -108,4 +115,88 @@ def findQuinoid(mol, strict=False):
     if aromatic: Chem.SetAromaticity(mol)
     return not requirement
 ExtraFilters['quinoid'].SetFilterRoutine(findQuinoid)
+
+
+############################################
+#           MY RADICAL FILTERS            #
+############################################
+DE=True
+ExtraFilters['radical']=NewFilter('not a radical')
+def FindRadical(mol):
+    smi_before = Chem.MolToSmiles(mol)
+    print "smi_before:", smi_before
+
+    # 1. Test for radical centers. 
+    nradcenters=0
+    for atom in mol.GetAtoms():
+        num = atom.GetAtomicNum()
+        idx = atom.GetIdx()
+        if not num==1.0: #i.e. we dont want to look for an explicit H
+            totalbondorder = atom.GetTotalValence()
+            atomcharge     = atom.GetFormalCharge()
+
+        # Test if single radical centers present: also Si/P/S included
+        possible_radicals=[(6, 3), (7, 2), (8,1), (14, 3), (15, 2), (16,1)]
+        for RadAtNum, RadTotalBondorder in possible_radicals:
+            if num==RadAtNum and atomcharge==0:
+                print RadAtNum, RadTotalBondorder, num, totalbondorder
+                if totalbondorder==RadTotalBondorder:
+                    nradcenters+=1
+    print "nradcenters:", nradcenters
+
+    # 2. Test for specific stable radical patterns
+    rphenoxyl1=Chem.MolFromSmarts('a1aaaaa1~[O,o;v1]')
+    rphenoxyl2=Chem.MolFromSmarts('C1=CC=CC=C1-[O;v1]')
+    rphenoxyl22=Chem.MolFromSmarts('[CX3]1~[CX3]~[CX3]~[CX3]~[CX3]~[CX3]1[O;v1]')
+    rphenalenyl1=Chem.MolFromSmarts('a1aaaaa1~[C,c;v3]')
+    rphenalenyl2=Chem.MolFromSmarts('C1=CC=CC=C1[C;v3]')
+    rphenoxyl3=Chem.MolFromSmarts('[O,o;v1]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
+    rphenalenyl3=Chem.MolFromSmarts('[C,c;v3]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
+
+    sss={
+         'PHENOXYL1':rphenoxyl1,
+         'PHENOXYL2':rphenoxyl2,
+         'PHENOXYL2':rphenoxyl22,
+         'PHENOXYL3':rphenoxyl3,
+         'PHENALENYL1':rphenalenyl1,
+         'PHENALENYL2':rphenalenyl2,
+         'PHENALENYL3':rphenalenyl3
+         }
+    nmatch=0
+    for name, ss in sss.iteritems():
+        for match in mol.GetSubstructMatches(ss):
+            nmatch+=1
+
+    # 3. Test if requirements are fullfilled.
+    if nradcenters==0:
+        return "no radical center"
+    elif nradcenters>0 and nmatch==0:
+        return "not a valid radical"
+    elif nradcenters==0 and nmatch>0:
+        return "this shouldn't be possible"
+    else:
+        return False
+
+def FindRadical_old(mol):
+    # test presence of max 1 normal radical center:
+    rc=Chem.MolFromSmarts('[C;v3;+0]')
+    ro=Chem.MolFromSmarts('[O;v1;+0]')
+    rn=Chem.MolFromSmarts('[N;v2;+0]')
+    sss=[rc, ro, rn]
+    once=0
+    for ss in sss:
+        oe.OEPrepareSearch(mol, ss)
+        for match in ss.Match(mol):
+            for ma in match.GetAtoms():
+                radcenter = ma.target.GetIdx()
+                mol.SetData('radcenter', radcenter)
+            once+=1
+    if once==1:#only one radical center
+        return False
+    elif once==0:
+        return True
+    else:
+        return True
+
+ExtraFilters['radical'].SetFilterRoutine(FindRadical)
 

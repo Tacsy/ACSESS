@@ -25,11 +25,11 @@ def PrintStat(nColumn, flush=True):
 # Timer function
 ##########################
 
-timingHead = "\n    TIMINGS:\n"
+timingHead = "\n    TIMINGS:"
 totalTimingHead = """\n
 --------------------------------------------------------
-                        TOTAL TIMINGS                   
---------------------------------------------------------\n"""
+                        TOTAL TIMINGS:              
+--------------------------------------------------------"""
 
 timings = {}
 timeRunning = {}

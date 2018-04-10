@@ -4,7 +4,7 @@
 from rdkit import Chem
 import traceback
 from molfails import MutateFail
-debug=True
+debug=False
 
 ########### Some global variables 
 bondorder={ 1:Chem.BondType.SINGLE,
@@ -13,7 +13,7 @@ bondorder={ 1:Chem.BondType.SINGLE,
 aromatic=False
 
 ############ FROM CANONICAL #############################
-def Finalize(mol, CanonicalTautomer=False):
+def Finalize(mol, CanonicalTautomer=False, aromatic=aromatic):
     ''' This function makes sure that a new mutated/crossover/fixfilter molecule:
         - corrects the implicit valence
         - removes data from parent molecules.
@@ -27,11 +27,12 @@ def Finalize(mol, CanonicalTautomer=False):
     ResetProps(mol)
     if CanonicalTautomer:
         Tautomerize(mol)
-    try: Sanitize(mol)
+    try: Sanitize(mol, aromatic)
     except Exception as e:
+        print "Error in Finalize with", Chem.MolToSmiles(mol, False), e,
         if debug:
-            for item in traceback.extract_stack(): print item
-        print "Error in Finalize with", Chem.MolToSmiles(mol, False), e
+            for item in traceback.extract_stack():
+                print item
     #Chem.SetAromaticity(mol)
     return
 
@@ -293,7 +294,7 @@ def SSSR_GetRings(mol,force=False):
             if len(AssignedAtoms)==nringatom and \
                len(AssignedBonds)==nringbond: break
             atomids=set(match)
-            bondids=set([ bond.GetIdx() for bond in GetAtomIBonds(match) ])
+            bondids=set([ bond.GetIdx() for bond in GetAtomIBonds(mol, match) ])
 
             #Count this ring only if some of its atoms or bonds
             #have not already been assigned to a smaller ring

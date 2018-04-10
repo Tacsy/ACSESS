@@ -66,6 +66,7 @@ def InitiateFileHandlers(openmode):
 
 def evolve():
     global startiter, lib, pool, iterhead
+
     ###################################################
     ##########                              ###########
     ##########           MAIN LOOP          ###########
@@ -107,6 +108,7 @@ def evolve():
         else:
             lib = [ mol for mol in pool ]
         FinishSelection(lib)
+        if len(lib)==0: raise RuntimeError('no molecules left')
 
         # 6. DIVERSITY IS:
         #siml = NNSimilarity(lib)

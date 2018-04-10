@@ -18,7 +18,7 @@ DefaultFilters={}
 MxAtm=0
 maxWeight=0
 maxRings=8
-maxRingSize=8
+maxRingSize=11
 RingSizeExceptions=1
 UseRuleOf10=False
 SAScore=0.0
@@ -50,7 +50,11 @@ def TooBig(mol):
 DefaultFilters['Too big'].SetFilterRoutine(TooBig)
 
 def CutMoreRings(mol):
-    RI = mol.GetRingInfo()
+    try:
+        Sanitize(mol)
+        RI = mol.GetRingInfo()
+    except Exception as e:
+        return True
     if not IsPlanar(mol): return True
     nrings,sa,sb=SSSR(mol,force=True)
     if UseRuleOf10 and RuleOf10(mol)>10: return True
@@ -59,6 +63,7 @@ def CutMoreRings(mol):
 
 def CutRings(mol):
     import mutate
+    MAXTRY=10
     #non-planar graphs and highly cyclic: keep breaking rings until graph
     #is planar or has an allowed number of rings
     changed=False
@@ -70,13 +75,11 @@ def CutRings(mol):
         # fancy manner to flatten a list of tuples with possible duplicates
         bondringids = set.intersection(*map(set, bondringids))
         bonds=GetIBonds(bondringids, mol, notprop='group')
-        #bonds=list(mol.GetBonds(OEAndBond(OEBondIsInRing(),
-        #                                  mt.BndNotInGroup)))
         if len(bonds)==0: raise MutateFail()
         mutate.RemoveBond(mol, random.choice(bonds))
         if mol.HasProp('ringcount'): mol.ClearProp('ringcount')
         changed=True
-        if itry >= mt.MAXTRY: raise MutateFail()
+        if itry >= MAXTRY: raise MutateFail()
     return changed
 
 DefaultFilters['Non-planar graph (Euler critereon)']=NewFilter('Non-planar graph (Euler critereon)')

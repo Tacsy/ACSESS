@@ -82,12 +82,32 @@ def Init():
     return
 
 def FixAndFilter(mol):
+
+    # 1. set on aromaticity
+    try:
+        Chem.SetAromaticity(mol)
+    except Exception as e:
+        print "didn't manage to set aromaticity for:", 
+        print Chem.SetAromaticity(mol)
+
+    # 2. filter
     changed, filt=FixFilters(mol)
-    if debug and failed:
+
+    # 3. Switch off aromaticity:
+    try:
+        Chem.Kekulize(mol, True)
+    except Exception as e:
+        print "didn't manage to kekulize:", 
+        print Chem.MolToSmiles(mol),
+        filt   ='unkekulizable'
+
+    # 4. Sanitize if Fixroutines changed the molecule
+    if debug and filt:
         print "changed:{}, failed:{}, mol:{}".format(changed, filt, Chem.MolToSmiles(mol))
     if changed: Finalize(mol)
+
+    # 5. Set molprops
     mol.SetBoolProp('filtered', True)
-    #if filt: print "filt:", filt
     if type(filt) is bool: filt={True:'unknown', False:''}[filt]
     mol.SetProp('failedfilter', filt)
     return changed, filt
@@ -106,6 +126,7 @@ def FixFilters(mol):
         for ft in ActiveFilters:
             failure=ActiveFilters[ft](mol)
             if failure: #try to fix the problem
+                if debug: print 'failure {} with {}'.format(failure, Chem.MolToSmiles(mol))
                 try: success=ActiveFilters[ft].Fix(mol)
                 except MutateFail:
                     success=False

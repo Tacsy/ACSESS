@@ -176,7 +176,7 @@ def Crossover(m1, m2):
 
     #print "new mol!", Chem.MolToSmiles(newmolRW)
     mol = newmolRW.GetMol()
-    try: Finalize(mol)
+    try: Finalize(mol, aromatic=False)
     except: raise MutateFail()
     if debug: print "CX5",
     return mol
@@ -362,7 +362,6 @@ def RemoveBond(mol, bond):
     if not bond.IsInRing():
         raise MutateFail(mol,'Non-ring bond passed to RemoveBond')
     mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
-    if aromatic: Chem.SetAromaticity(mol)
     return mol
 
 #################################################################
@@ -440,7 +439,6 @@ def RemoveAtom(mol,atom):
         mol.RemoveAtom(atom.GetIdx())
         # this line give indexerrors:
         mol.AddBond(nbr[0].GetIdx(), nbr[1].GetIdx(), bondorder[1])
-        if aromatic: Chem.SetAromaticity(mol)
     elif True:
         pass
 
@@ -478,7 +476,6 @@ def RemoveAtom(mol,atom):
             for neighb in nbr:
                 if not neighb.GetIdx()==nbrCarbon[choose-3].GetIdx():
                     mol.AddBond(neighb.GetIdx() ,nbrCarbon[choose-3].GetIdx(), bondorder[1])
-        if aromatic: Chem.SetAromaticity(mol)
 
     #Remove a 4-bond atom
     elif Degree==4:
@@ -503,7 +500,6 @@ def RemoveAtom(mol,atom):
             mol.AddBond(n3.GetIdx(), nbr[0].GetIdx(), bondorder[1])
         else: #XA4 -> A(A3)
             for neighb in nbr: mol.AddBond(n1.GetIdx(), neighb.GetIdx(), bondorder[1])
-        if aromatic: Chem.SetAromaticity(mol)
 
     #Make sure nothing is bonded twice
     oldpairs=[]
@@ -526,8 +522,8 @@ def RemoveAtom(mol,atom):
       except KeyError: raise MutateFail(mol)
 
     try:
-        Finalize(mol)
-    except: print "in Remove Atom with:", Chem.MolToSmiles(mol, True)
+        Finalize(mol, aromatic=False)
+    except Exception as e: print "in Remove Atom with:", Chem.MolToSmiles(mol, True), e
     return mol
 
 def AddArRing(mol, bond):

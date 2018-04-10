@@ -18,7 +18,7 @@ def GeomFilter(mol):
 
 # BREDT VIOLATIONS
 AllFilters["Bredt's rule"]=NewFilter("Bredt's rule")
-BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
+#BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
 BredtViolation=NewPatternFilter('bredt violation')
 BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
 BredtViolation.SetExceptions([ Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])#,
@@ -31,7 +31,8 @@ def BredtsRule(mol):
         #for atom in match.GetAtoms():
         atoms = filter(lambda x:x.GetIdx() in match, mol.GetAtoms())
         for atom in atoms:
-            if GetSmallestRingSize(atom) >= 8:
+            SRZ = GetSmallestRingSize(atom)
+            if SRZ >= 5:
                 macrocycle=True
                 break
         if not macrocycle: return 'Bredt violation'
@@ -185,9 +186,8 @@ AllFilters['triple bond in ring']=NewFilter('triple bond in ring')
 
 def TripleBondInRing(mol):
     ntripleinlargering=0
-    Chem.Kekulize(mol)
     for bond in mol.GetBonds():
-        if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
+        if bond.IsInRing() and bond.GetBondTypeAsDouble()>2.0:
             # test if Ringsize smaller than 9:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 #if oe.OEBondGetSmallestRingSize(bond)<9 and bond.GetOrder()==3:
@@ -204,7 +204,7 @@ AllFilters['triple bond in ring'].SetFilterRoutine(TripleBondInRing)
 def FixTripleBondInRing(mol):
     changed=False
     for bond in mol.GetBonds():
-        if bond.IsInRing() and bond.GetBondType()==Chem.BondType.TRIPLE:
+        if bond.IsInRing() and bond.GetBondTypeAsDouble()>2.0:
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
