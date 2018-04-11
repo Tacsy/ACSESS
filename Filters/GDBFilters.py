@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+debug=False
 
 from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
@@ -208,7 +209,6 @@ def FixTripleBondInRing(mol):
             if any(bond.IsInRingSize(n) for n in range(2, 10)):
                 bond.SetBondType(Chem.BondType.SINGLE)
                 changed=True
-    if aromatic: Chem.SetAromaticity(mol)
     return changed
 AllFilters['triple bond in ring'].SetFixRoutine(FixTripleBondInRing)
 
@@ -224,7 +224,9 @@ AllFilters['triple bond in ring'].SetFixRoutine(FixTripleBondInRing)
 # the one that we want to remove
 def FixByRemovingHeteroatoms(mol,filter):
     changed=False
+    Chem.SetAromaticity(mol)
     matches = filter.FilterWithExceptions(mol)
+    Chem.Kekulize(mol, True)
     while len(matches)>0:
         match=matches[0]
         fixd=False
@@ -235,7 +237,9 @@ def FixByRemovingHeteroatoms(mol,filter):
                     mutate.RemoveGroup(mol,atom.GetProp('group'))
                 atom.SetAtomicNum(6)
                 changed=True
+                Chem.SetAromaticity(mol)
                 matches = filter.FilterWithExceptions(mol)
+                Chem.Kekulize(mol, True)
                 fixd=True
                 break
         if not fixd: raise MutateFail()
@@ -245,6 +249,7 @@ def FixByRemovingHeteroatoms(mol,filter):
 ########################################
 # Groups that can be fixed by ... eliminating unsaturated bonds
 def FixBySaturating(mol,filter):
+    changed=False
     matches = filter.FilterWithExceptions(mol)
     while len(matches)>0:
         match=matches[0]
@@ -656,7 +661,7 @@ for filtname in ['aminal','C=N','Enamine','HetHet_NN','HetHet_OO',
 
 
 for filtname in ['Hetero-SR4','Hetero-SR5',
-                 'Hetero-SR6','Hetero-SR7','C=N',
+                 'Hetero-SR6','Hetero-SR7',
                  'Double bond in 3 ring',
                  'Double bond in 4 ring',
                  'allene', 'acidtaut']:

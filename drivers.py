@@ -286,14 +286,22 @@ def RemoveDuplicates(lib):
 # Mutation driver
 #@captureMolExceptions
 def MakeMutations(candidate):
-    # the mutations will be based on not-aromatic SMILES
-    if aromatic: Chem.Kekulize(candidate, True)
+    ''' The mutations, based on not-aromatic SMILES'''
+    # 1. Kekulize:
+    try:
+        Chem.Kekulize(candidate, True)
+    except ValueError:
+        print "MakeMutation. Kekulize Error:", Chem.MolToSmiles(candidate)
+        raise MutateFail(candidate)
+    # 2. Mutate
     candidate=SingleMutate(candidate)
+    # 3. SetAromaticity again
     try:
         if aromatic: Chem.SetAromaticity(candidate)
         Finalize(candidate)
     except ValueError:
-        print Chem.MolToSmiles(candidate)
+        print "MakeMutation. SetAromaticity Error:", Chem.MolToSmiles(candidate)
+        raise MutateFail(candidate)
     return candidate
 
 def SingleMutate(candidateraw):
@@ -306,18 +314,6 @@ def SingleMutate(candidateraw):
     if candidateraw is None: raise ValueError('candidate is none')
     else: candidate = Chem.RWMol(candidateraw)
     global stats
-    #global nAdd,nAddFail,nRemove,nRemoveFail,nBreak,nBreakFail,\
-    #       nNewRing,nNewRingFail,nFlip,nFlipFail,nAtomType,nAtomTypeFail,\
-    #       nNoMutation
-
-    nFlip,     nFlipFail     =(0,0)
-    nAtomType, nAtomTypeFail =(0,0)
-    nNewRing,  nNewRingFail  =(0,0)
-    nBreak,    nBreakFail    =(0,0)
-    nAdd,      nAddFail      =(0,0)
-    nRemove,   nRemoveFail   =(0,0)
-    nAddArRing,nAddArRingFail=(0,0)
-    nNoMutation              =0
 
     parent=candidate.GetProp('isosmi')
     ResetProps(candidate)
