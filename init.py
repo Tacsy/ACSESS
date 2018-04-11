@@ -14,32 +14,27 @@ import random
 # Read run parameters from mprms.py,
 # and store them all in StoredParams.py 
 ######################################################
-def ReadMPRMS():
+def Initialize():
+
+    # define which type of module attributes are allowed to be changed
     primitiveTypes=(str, float, bool, int, list, tuple, type(None))
     normalvar = lambda var:type(var) in primitiveTypes
     notbuiltin= lambda var:not var.startswith('_')
     def goodvar(var, mod):return notbuiltin(var) and normalvar(getattr(mod, var))
 
-    def SetModVal(name,ModAssign):
-        if hasattr(mprms,name):
-            if not restart: print>> myopts,name+'='+str(getattr(mprms,name))
-            setattr(ModAssign,name,
-                    getattr(mprms,name) )
-    def SetMPRMDefault(name,value):
-        if not hasattr(mprms,name):
-            setattr(mprms,name,value)
-        else:
-            if not restart: print >> myopts,name+'='+str(getattr(mprms,name))
-
+    # set random seed
     if hasattr(mprms, 'rseed'):
         random.seed(mprms.rseed)
     else:
         seed = random.randint(1,1000)
         print "random seed:", seed
         random.seed(seed)
+
+    # force mprms to have some properties
     if not hasattr(mprms, 'optimize'):
         mprms.optimize=False
-
+    if not hasattr(mprms, 'restart'):
+        mprms.restart=False
     mprms.MxAtm=50
     mprms.EdgeRatio=0.1
     mprms.EdgeLen=10
@@ -48,7 +43,8 @@ def ReadMPRMS():
     _modules = ['mutate', 
                 'filters', 'Filters.DefaultFilters',
                 'drivers',
-                'rdkithelpers']
+                'rdkithelpers',
+                'output']
     if hasattr(mprms, 'metric'):
         _modules.append('distance')
     else:
