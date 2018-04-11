@@ -26,44 +26,13 @@ def initiate():
     ##############################
     # 1. Check input
     ##############################
-    init.ReadMPRMS() #Does most of the input verification
+    init.Initialize() #Does most of the input verification
     ##############################
-    # 2. Open output
-    ##############################
-    global openmode
-    if hasattr(mprms, 'restart') and mprms.restart: 
-        openmode = 'a'
-    else:
-        mprms.restart=False
-        openmode = 'w'
-    InitiateFileHandlers(openmode)
-    ##############################
-    # 3. Get starting library
+    # 2. Get starting library
     ##############################
     global startiter, lib, pool
     startiter, lib, pool= init.StartLibAndPool(mprms.restart)
     return
-
-def InitiateFileHandlers(openmode):
-    global convergeFile, statsFile, coordsStdDev, statformat, convergeformat
-    dr.filterFile = open('filters.dat', openmode)
-    convergeFile = open('convergence.dat', openmode)
-    output.statsFile = open('stats.dat', openmode)
-    objective.simstats=open('Fitness.dat','a')
-    coordsStdDev = open('stddev.dat', openmode)
-    statformat='{0:>7} {1:>8} {2:>8} {3:>10} {4:>10} {5:>10} {6:>11} {7:>7} {8:>9}'
-    convergeformat='{0:>8} {1:>13} {2:>12} {3:>13} {4:>10} {5:>10}'
-    if not mprms.restart:
-        print >> output.statsFile, statformat.format("#Gen","TooBig","Mutants",
-                                      "FailedMut","Undiverse","Filtered",
-                                      "Duplicates","Unfit","PoolSize")
-        print >> convergeFile, convergeformat.format(
-            '#- Round','-- Diversity','-- Max Atoms',
-            '-- SubsetSize','-- Filters','-- 3D Geom')
-    return
-
-#initiate()
-
 
 def evolve():
     global startiter, lib, pool, iterhead
@@ -103,7 +72,9 @@ def evolve():
  
         # 5. SELECTION
         if mprms.optimize:
+            oldN = len(pool)
             lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
+            stats['nUnFit']=oldN - len(pool)
         elif len(pool)>mprms.subsetSize:
             #lib = random.sample(pool, mprms.subsetSize)
             lib = dr.DriveSelection(pool, mprms.subsetSize)

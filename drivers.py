@@ -10,6 +10,7 @@ import filters
 import mprms
 import random, sys
 from output import logtime, StartTimer, EndTimer, stats
+import output
 
 ###### mutation probabilities:
 p_BondFlip=0.8
@@ -32,6 +33,7 @@ KeepNoGeomPool= True
 maxPool       = 1000
 
 debug=False
+
 
 def SetIterationWorkflow(gen):
     Tautomerizing = (startTautomer and gen>= startTautomer)
@@ -182,9 +184,9 @@ def DriveFilters(lib, Filtering, GenStrucs):
                     smi=Chem.MolToSmiles(mol)
                 except NotImplementedError:
                     smi=mol._smiles
-                filterFile.write(smi + '  ' + failed + '\n')
+                output.filterFile.write(smi + '  ' + failed + '\n')
         lib=[mol for mol in lib if not mol.GetProp('failedfilter') ]
-        filterFile.flush()
+        output.filterFile.flush()
     return lib
 
 def DrivePoolFilters(pool, Filtering, GenStruc, Tautomerizing, gen):

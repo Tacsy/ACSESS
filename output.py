@@ -3,9 +3,36 @@
 
 import time
 import sys
+import mprms
 
 startTime = time.time()
 debug=False
+
+##########################
+# Initialize output files
+##########################
+
+statcolumns=('gen', 'diversity', 'nCand', 'nFilt', 'nDups', 'nExcp', 'nUnFit',
+        'nAdd', 'nAddFail', 'nAddArRing', 'nAddArRingFail',
+        'nAtomType', 'nAtomTypeFail',
+        'nBreak', 'nBreakFail', 'nFlip', 'nFlipFail',
+        'nNewRing', 'nNewRingFail', 'nRemove', 'nRemoveFail',
+        'nNoMutation')
+def Init():
+    global statsFile, filterFile
+    if mprms.restart:
+        statsFile = open('stats.dat', 'a')
+        filterFile= open('filters.txt','a')
+    else:
+        statsFile = open('stats.dat', 'w')
+        filterFile=open('filters.txt','w')
+        statsFile.write(" ".join(statcolumns[:7]))
+        statsFile.write(" \\\n    ")
+        statsFile.write(" ".join(statcolumns[7:]))
+        statsFile.write("\n")
+        #print >> statsFile, statformat.format("#Gen","TooBig","Mutants",
+        #                              "FailedMut","Undiverse","Filtered",
+        #                              "Duplicates","Unfit","PoolSize")
 
 ##########################
 # Statistics function
@@ -24,8 +51,12 @@ def PrintStat(nColumn=4, flush=True):
         return
     print statsHead
     keys = PrintDict(stats, nColumn, sort='key')
-    for key in keys:
-        statsFile.write(" {} ".format(stats[key]))
+    for i, key in enumerate(statcolumns):
+        try:
+            statsFile.write(" {:4d} ".format(stats[key]))
+        except ValueError:
+            statsFile.write(" {:14.7f} ".format(stats[key]))
+        if i==6: statsFile.write("|")
     statsFile.write("\n")
         
     if flush:
