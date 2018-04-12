@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+debug=False
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from molfails import MutateFail
 from rdkithelpers import *
 
-debug=False
 '''
 This filter.py contains all the possible filters in the previous version of
 ACSESS, in order to make the code in the cleaner way.
@@ -82,6 +82,10 @@ def Init():
     return
 
 def FixAndFilter(mol):
+    if mol is None: return None, True
+    elif not type(mol)==Chem.RWMol:
+        print "mol to RWmol"
+        mol=Chem.RWMol(mol)
 
     # 1. set on aromaticity
     try:
@@ -126,16 +130,32 @@ def FixFilters(mol):
         for ft in ActiveFilters:
             failure=ActiveFilters[ft](mol)
             if failure: #try to fix the problem
-                if debug: print 'failure {} with {}'.format(failure, Chem.MolToSmiles(mol))
-                try: success=ActiveFilters[ft].Fix(mol)
+                if debug: print '{} failure {} with {}'.format(ft, failure, Chem.MolToSmiles(mol)),
+                # 1. Fixes are based on kekulized forms of the molecules:
+                try: Chem.Kekulize(mol, True)
+                except ValueError: raise MutateFail
+                if debug: print Chem.MolToSmiles(mol)
+                # 2. Fix:
+                try: 
+                    success=ActiveFilters[ft].Fix(mol)
                 except MutateFail:
                     success=False
                     changed=True
+                # 3. Force set back to Aromatic. It that fails->fail
+                try: Chem.SetAromaticity(mol)
+                except ValueError:
+                    success=False
+                    changed=True
+                # 4. if error->fail. otherwise new change->refilter(break)
                 if not success: return changed,failure
                 else:
                     changed=True
-                    Finalize(mol)
-                    break #refilter modified compound
+                    # 4b. To get a new change it should stand the test:
+                    try:Finalize(mol)
+                    except ValueError: return changed, failure
+
+                    if debug: print "\tFixed!", Chem.MolToSmiles(mol)
+                    break
         if i==MAXTRY-1 or (not failure):
             return changed,failure
 
@@ -225,6 +245,7 @@ class NewPatternFilter(NewFilter):
 
     def Fix(self,mymol):
         if self.HasFix:
+            if debug: print "in PatternFix:", self.name, self.fixroutine.__name__
             return self.fixroutine(mymol,self)
         else: return False
 
@@ -240,11 +261,6 @@ class NewPatternFilter(NewFilter):
         self.MyExceptions=exc
 
     def FilterWithExceptions(self, mol):
-        #if oe.OEHasExplicitHydrogens(mymol) and not Radical:
-        #    print 'WARNING: Explicit hydrogens detected in FilterWithExceptions'
-        #    print '     Filters may not function properly'
-        #    print mymol.GetData('isosmi')
-
         #matches=list( self.pattern.Match(mymol,True) )
         matches = list( mol.GetSubstructMatches(self.pattern))
         if not self.HasExceptions: return matches
@@ -255,7 +271,9 @@ class NewPatternFilter(NewFilter):
         # Remove matches that are substructures of exceptions
         # NOT TESTED:
         for exception in self.MyExceptions:
+            if debug and self.name=='C==N': print Chem.MolToSmarts(exception)
             exmatches= mol.GetSubstructMatches(exception)
+            if debug and self.name=='C=N': print "exmatches:", exmatches, "matches:", matches
             for exmatch in exmatches: # for each exception substructure found:
                 matches= [match for match in matches if not match.issubset( exmatches ) ]
                 if len(matches)==0: break

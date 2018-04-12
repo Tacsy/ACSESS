@@ -145,18 +145,22 @@ def FindRadical(mol):
     print "nradcenters:", nradcenters
 
     # 2. Test for specific stable radical patterns
-    rphenoxyl1=Chem.MolFromSmarts('a1aaaaa1~[O,o;v1]')
-    rphenoxyl2=Chem.MolFromSmarts('C1=CC=CC=C1-[O;v1]')
-    rphenoxyl22=Chem.MolFromSmarts('[CX3]1~[CX3]~[CX3]~[CX3]~[CX3]~[CX3]1[O;v1]')
+    rphenoxyl1a=Chem.MolFromSmarts('a1aaaaa1~[C,c]~[O,o;v1]')
+    rphenoxyl1b=Chem.MolFromSmarts('a1aaaaa1~[O,o;v1]')
+    rphenoxyl2a=Chem.MolFromSmarts('C1=CC=CC=C1-[O;v1]')
+    rphenoxyl2b=Chem.MolFromSmarts('C1=CC=CC=C1-C(=*)-[O;v1]')
+    rphenoxyl22=Chem.MolFromSmarts('[CX3]1~[CX3]~[CX3]~[CX3]~[CX3]~[CX3]1~[CX3]~[O,o;v1]')
     rphenalenyl1=Chem.MolFromSmarts('a1aaaaa1~[C,c;v3]')
     rphenalenyl2=Chem.MolFromSmarts('C1=CC=CC=C1[C;v3]')
     rphenoxyl3=Chem.MolFromSmarts('[O,o;v1]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
     rphenalenyl3=Chem.MolFromSmarts('[C,c;v3]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
 
     sss={
-         'PHENOXYL1':rphenoxyl1,
-         'PHENOXYL2':rphenoxyl2,
-         'PHENOXYL2':rphenoxyl22,
+         'PHENOXYL1a':rphenoxyl1a,
+         'PHENOXYL1b':rphenoxyl1b,
+         'PHENOXYL2a':rphenoxyl2a,
+         'PHENOXYL2b':rphenoxyl2b,
+         'PHENOXYL22':rphenoxyl22,
          'PHENOXYL3':rphenoxyl3,
          'PHENALENYL1':rphenalenyl1,
          'PHENALENYL2':rphenalenyl2,

@@ -7,7 +7,8 @@ import os
 import mprms
 from rdkit import Chem
 from rdkithelpers import *
-import distance, output
+import distance
+import output
 
 minimize=False #Minimizing or maximizing the objective function?
 compGeom=False #Does objective function require 3d structure?
@@ -107,10 +108,10 @@ def EvaluateObjective(totallib, gen):
 
 def SelectFittest(newpool, subsetSize, gen):
     global NumIn, NumOut, sumhelper
+    nSwap=0
     if len(newpool)>subsetSize+TakeFittest:
         mostfit = newpool[0:TakeFittest]
         pool = newpool[TakeFittest:]   ###at this point pool is updated so that only compounds satisfying fitness stay
-        nSwap=0
 
         distance.ScatterCoords( pool )
 
@@ -202,15 +203,11 @@ def SelectFittest(newpool, subsetSize, gen):
        mostfit=[]
 
     #Print statisticals
-    fvals1= np.array( [ mol.GetDoubleProp('Objective') for mol in newlib+mostfit] )
-    print "fvals1:", fvals1
+    fvals = np.array( [ mol.GetDoubleProp('Objective') for mol in newlib+mostfit] )
+    print "fvals:", fvals
+    obstats={'gen':gen, 'fvals':fvals, 'NumIn':NumIn, 'NumOut':NumOut, 'nSwap':nSwap}
+    output.PrintObjectiveStat(obstats)
 
-    print>>simstats,fitnessformat.format(gen,NumIn,NumOut,
-                                         np.average(fvals1),
-                                         np.min(fvals1),
-                                         np.max(fvals1),0.0)
-    
-    simstats.flush()
 
     newlib += mostfit
     newlib.sort( key=lambda x:x.GetDoubleProp('Objective'), reverse=not minimize)

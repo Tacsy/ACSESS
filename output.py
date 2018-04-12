@@ -4,6 +4,7 @@
 import time
 import sys
 import mprms
+import numpy as np
 
 startTime = time.time()
 debug=False
@@ -18,32 +19,39 @@ statcolumns=('gen', 'diversity', 'nCand', 'nFilt', 'nDups', 'nExcp', 'nUnFit',
         'nBreak', 'nBreakFail', 'nFlip', 'nFlipFail',
         'nNewRing', 'nNewRingFail', 'nRemove', 'nRemoveFail',
         'nNoMutation')
+fitnesscolumns=('gen', 'NumIn', 'NumOut', 'nSwap', 'AvgFVal', 'MinFVal', 'MaxFVal', 'CutOff')
 def Init():
-    global statsFile, filterFile
+    global statsFile, filterFile, fitnessFile
     if mprms.restart:
         statsFile = open('stats.dat', 'a')
-        filterFile= open('filters.txt','a')
+        filterFile= open('filters.dat','a')
     else:
         statsFile = open('stats.dat', 'w')
-        filterFile=open('filters.txt','w')
+        filterFile= open('filters.dat','w')
         statsFile.write(" ".join(statcolumns[:7]))
         statsFile.write(" \\\n    ")
         statsFile.write(" ".join(statcolumns[7:]))
         statsFile.write("\n")
-        #print >> statsFile, statformat.format("#Gen","TooBig","Mutants",
-        #                              "FailedMut","Undiverse","Filtered",
-        #                              "Duplicates","Unfit","PoolSize")
+
+    # objective output
+    if mprms.optimize:
+        if mprms.restart:
+            fitnessFile=open('Fitness.dat','a')
+        else:
+            fitnessFile=open('Fitness.dat','w')
+            fitnessFile.write(" ".join(fitnesscolumns))
+            fitnessFile.write("\n")
+    return
 
 ##########################
 # Statistics function
 ##########################
 
 statsHead = "\n\tSTATISTICS:"
-
 from collections import defaultdict
-default = lambda:0
-default.__name__='lambda:0'
-stats=defaultdict(default)
+_default = lambda:0
+_default.__name__='lambda:0'
+stats=defaultdict(_default)
 
 def PrintStat(nColumn=4, flush=True):
     global stats
@@ -58,10 +66,20 @@ def PrintStat(nColumn=4, flush=True):
             statsFile.write(" {:14.7f} ".format(stats[key]))
         if i==6: statsFile.write("|")
     statsFile.write("\n")
-        
     if flush:
         sys.stdout.flush()
         stats.clear()
+    return
+
+def PrintObjectiveStat(obstats, nColumn=4, flush=True):
+    for key in fitnesscolumns[:4]:
+        fitnessFile.write(" {:4d} ".format(obstats[key]))
+    for function in (np.average, np.min, np.max):
+        fitnessFile.write(" {:14.7f} ".format(function(obstats['fvals'])))
+    fitnessFile.write("\n")
+    if flush:
+        fitnessFile.flush()
+
 
 ##########################
 # Timer function

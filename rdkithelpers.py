@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+debug=False
 
 from rdkit import Chem
 import traceback
 from molfails import MutateFail
-debug=False
 
 ########### Some global variables 
 bondorder={ 1:Chem.BondType.SINGLE,

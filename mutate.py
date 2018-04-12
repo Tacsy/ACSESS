@@ -356,7 +356,6 @@ def AddBond(mol):
 # or the molecule would be rent in twain
 #@captureMolExceptions
 def RemoveBond(mol, bond):
-    Chem.Kekulize(mol, True) # True forces to all aromatic information to be deleted
     if bond.HasProp('group'):
         raise MutateFail(mol,'Protected bond (in group) passed to RemoveBond.')
     if not bond.IsInRing():
@@ -424,12 +423,6 @@ def RemoveAtom(mol,atom):
     #
     #NOT WORKING WELL
     elif Degree==2:
-        try:
-            Chem.Kekulize(mol) # to not remove atoms from aromatic rings
-        except Exception as e:
-            print "inital kekulize error with:", Chem.MolToSmiles(mol)
-            print e
-
         #print Chem.MolToSmiles(mol, True)
         nbr=[]
         for neighb in atom.GetNeighbors():
@@ -445,11 +438,6 @@ def RemoveAtom(mol,atom):
 
     #Remove a 3-bond atom:
     elif Degree==3:
-        try:
-            Chem.Kekulize(mol) # to not remove atoms from aromatic rings
-        except Exception as e:
-            print "inital kekulize error with:", Chem.MolToSmiles(mol)
-            print e
         nbr=[]
         nbrCarbon=[]
         nChoice=3
@@ -479,11 +467,6 @@ def RemoveAtom(mol,atom):
 
     #Remove a 4-bond atom
     elif Degree==4:
-        try:
-            Chem.Kekulize(mol) # to not remove atoms from aromatic rings
-        except Exception as e:
-            print "inital kekulize error with:", Chem.MolToSmiles(mol)
-            print e
         nbr=[]
         for neighb in atom.GetNeighbors():
             nbr.append(neighb)

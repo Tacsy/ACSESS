@@ -4,7 +4,7 @@
 '''
 This is the main function of the ACSESS
 '''
-debug=True
+debug=False
 ##############################
 # Import statements
 ##############################
@@ -23,14 +23,14 @@ from similarity import NNSimilarity
 iterhead="\n-------------------- Iteration {0} ----------------\n"
 
 def initiate():
-    ##############################
-    # 1. Check input
-    ##############################
-    init.Initialize() #Does most of the input verification
-    ##############################
-    # 2. Get starting library
-    ##############################
     global startiter, lib, pool
+    ##################################
+    # 1. read input and initialize
+    ##################################
+    init.Initialize()
+    ##################################
+    # 2. Get starting library
+    ##################################
     startiter, lib, pool= init.StartLibAndPool(mprms.restart)
     return
 
@@ -49,10 +49,6 @@ def evolve():
         # 1. PRELOGGING
         print iterhead.format(gen)
         stats.update({'gen':gen, 'nPool':len(pool), 'nLib':len(lib)})
-        if debug:
-            print "startiter:", startiter
-            print "len lib:", len(lib)
-            print "len pool:", len(pool)
  
         # 2.MUTATIONS AND CROSSOVERS
         newlib = dr.DriveMutations(lib)
@@ -92,9 +88,8 @@ def evolve():
         print '\nLIBRARY DIVERSITY: ',siml
  
         # 7. POSTLOGGING
-        if debug:
-            with open('mylib','w') as f:
-                for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')
+        with open('mylib','w') as f:
+            for mol in lib: f.write(Chem.MolToSmiles(mol)+'\n')
         if gen % mprms.writeInterval==0 or gen==mprms.nGen-1:
             DumpMols(lib, gen)
             DumpMols(pool)
