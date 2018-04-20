@@ -280,7 +280,8 @@ class NewPatternFilter(NewFilter):
             if len(matches)==0: break
         return matches
 
-# THIS FUNCTION IS NOT USED YET!
+ 
+# FUNCTIONS BELOW ARE NOT USED YET!
 # ensure molecule has specific pattern
 def CheckSubstructure(mol, patterns):
     # get mol and return bool for filter or not
@@ -291,6 +292,18 @@ def CheckSubstructure(mol, patterns):
         if mol.HasSubstructMatch(pattern):
             dumpMol = True
             break
+
+    return dumpMol
+
+def CheckLibrary(mol, library):
+    # get mol and return bool for filter or not
+    # library: list of molecule string SMILES to check whether or not the
+    # molecue is in the library or not
+    dumpMol = False
+    # library search:
+    if Chem.MolToSmiles(mol) is in library:
+        dumpMol = True
+        break
 
     return dumpMol
 
