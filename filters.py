@@ -303,7 +303,6 @@ def CheckLibrary(mol, library):
     # library search:
     if Chem.MolToSmiles(mol) in library:
         dumpMol = True
-        break
 
     return dumpMol
 
