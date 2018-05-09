@@ -301,7 +301,7 @@ def CheckLibrary(mol, library):
     # molecue is in the library or not
     dumpMol = False
     # library search:
-    if Chem.MolToSmiles(mol) is in library:
+    if Chem.MolToSmiles(mol) in library:
         dumpMol = True
         break
 
