@@ -12,7 +12,6 @@ import math
 from collections import defaultdict
 
 import os
-
 '''
 this module include various previous modules that corresponding to molecular
 property calculation, including:
@@ -22,10 +21,12 @@ property calculation, including:
     MQN.py
 '''
 
+
 def AutoCorr2D(mol):
     from rdkit.Chem import rdMolDescriptors
     vector = rdMolDescriptors.CalcAUTOCORR2D(mol)
     return vector
+
 
 ############################################################
 # Assign polarizabilities to every atom.
@@ -39,7 +40,7 @@ def AutoCorr2D(mol):
 # dx.doi.org/10.1021/ja00518a014
 ############################################################
 def AssignAtomicPolarizability(mol):
-    
+
     for atom in mol.GetAtoms():
         #get degree for specific molecule
         nBonds = atom.GetTotalDegree()
@@ -85,7 +86,7 @@ def AssignAtomicPolarizability(mol):
                     atom.SetDoubleProp('polarizability', 1.304)
                 else:
                     atom.SetDoubleProp('polarizability', 1.435)
-        
+
         #Oxygen (O)
         elif atom.GetAtomicNum() == 8:
             if atom.GetIsAromatic():
@@ -105,7 +106,7 @@ def AssignAtomicPolarizability(mol):
             else:
                 atom.SetDoubleProp('polarizability', 3.967)
 
-        #Halogens 
+        #Halogens
         elif atom.GetAtomicNum() == 9:
             atom.SetDoubleProp('polarizability', 1.046)
         elif atom.GetAtomicNum() == 15:
@@ -116,23 +117,25 @@ def AssignAtomicPolarizability(mol):
             atom.SetDoubleProp('polarizability', 5.577)
         elif atom.GetAtomicNum() == 53:
             atom.SetDoubleProp('polarizability', 8.820)
-                
-	#Iridium (I)
-	#This param value was obtained by fitting the above known tau values
-	#In general polarizability increases with atomic number so we used
-        #linear fit to get the value
-	#This is a crudest approx so could be wrong!
-	elif atom.GetAtomicNum() == 77:
+
+#Iridium (I)
+#This param value was obtained by fitting the above known tau values
+#In general polarizability increases with atomic number so we used
+#linear fit to get the value
+#This is a crudest approx so could be wrong!
+        elif atom.GetAtomicNum() == 77:
             atom.SetData('polarizability', 12.77)
 
         else:
-            raise KeyError('No polarizabilities for atomic number'
-                           +str(atom.GetAtomicNum()))   
+            raise KeyError('No polarizabilities for atomic number' +
+                           str(atom.GetAtomicNum()))
+
 
 ############################################################
 # Topological steric effect index (TSEI)
 # Cao and Liu, J Chem Inf Comput Sci 44(2), 678-687, 2004.
 # dx.doi.org/10.1021/ci034266b
+
 
 # Covalent radii (in angstroms)
 # These are the 2008 values from CSD, except for carbon which is from Cao
@@ -145,24 +148,36 @@ def AssignAtomicPolarizability(mol):
 def AssignTSEI(mol):
     # all mol parsed into this function should be hydrogen added
 
-    radius = {1:0.315, 5:0.84, 6:0.772 ,7:0.711, 8:0.662, 9:0.57, 14:1.11,
-              15:1.06, 16:1.05, 17:1.024 ,35:1.14, 53: 1.33, 77:1.42}
+    radius = {
+        1: 0.315,
+        5: 0.84,
+        6: 0.772,
+        7: 0.711,
+        8: 0.662,
+        9: 0.57,
+        14: 1.11,
+        15: 1.06,
+        16: 1.05,
+        17: 1.024,
+        35: 1.14,
+        53: 1.33,
+        77: 1.42
+    }
     nAtoms = mol.GetNumAtoms()
-
     '''
     this is a revision part of code that deviate from previous code in ACSESS,
     we should consult with Aaron for more detail
     '''
 
-    #Need to get shortest path between each pair of atoms 
+    #Need to get shortest path between each pair of atoms
     #this could be faster by following paths outward from each atom
     #if atom is hydrogen, the TSEI is set as 0.0 directly
     for i in xrange(nAtoms):
         iAtom = mol.GetAtomWithIdx(i)
         if iAtom.GetAtomicNum() == 1:
-            iAtom.SetDoubleProp('TSEI',0.0)
+            iAtom.SetDoubleProp('TSEI', 0.0)
             continue
-        for j in xrange(i+1, nAtoms):
+        for j in xrange(i + 1, nAtoms):
             jAtom = mol.GetAtomWithIdx(j)
             if jAtom.GetAtomicNum() == 1:
                 continue
@@ -172,25 +187,27 @@ def AssignTSEI(mol):
                 length = 0.0
                 for k in path:
                     kAtom = mol.GetAtomWithIdx(k)
-                    if k == 0 or k == len(path)-1:
+                    if k == 0 or k == len(path) - 1:
                         length += radius[kAtom.GetAtomicNum()]
                     else:
-                        length += 2.0*radius[kAtom.GetAtomicNum()]
-                
+                        length += 2.0 * radius[kAtom.GetAtomicNum()]
+
                 #factor of 2 cancels length vs. radius
                 iRad = radius[iAtom.GetAtomicNum()]
                 jRad = radius[jAtom.GetAtomicNum()]
                 if iAtom.HasProp('TSEI'):
-                    iAtom.SetDoubleProp('TSEI', iAtom.GetDoubleProp('TSEI')
-                                        +(2.0*jRad/length)**3)
+                    iAtom.SetDoubleProp('TSEI',
+                                        iAtom.GetDoubleProp('TSEI') +
+                                        (2.0 * jRad / length)**3)
                 else:
-                    iAtom.SetDoubleProp('TSEI', (2.0*jRad/length)**3)
+                    iAtom.SetDoubleProp('TSEI', (2.0 * jRad / length)**3)
                 if jAtom.HasProp('TSEI'):
-                    jAtom.SetDoubleProp('TSEI', jAtom.GetDoubleProp('TSEI')
-                                        +(2.0*iRad/length)**3)
+                    jAtom.SetDoubleProp('TSEI',
+                                        jAtom.GetDoubleProp('TSEI') +
+                                        (2.0 * iRad / length)**3)
                 else:
-                    jAtom.SetDoubleProp('TSEI', (2.0*iRad/length)**3)
-    
+                    jAtom.SetDoubleProp('TSEI', (2.0 * iRad / length)**3)
+
 
 ############################################################
 # Calculate autocorrelation vector for atomic properties
@@ -198,29 +215,29 @@ def AssignTSEI(mol):
 # A more recent reference is dx.doi.org/10.1002/poc.610061008
 ############################################################
 def AutoCorreationVector(mol, props, maxBonds):
-    
+
     atoms = mol.GetAtoms()
-    
+
     #Initializes the autocorrelation vector for each property
     #To access the component for property x at bond separation y, use
     #ACVector[x][y]
-    ACVector = [([0.0]*(maxBonds+1)) for prop in props]
+    ACVector = [([0.0] * (maxBonds + 1)) for prop in props]
 
     #Retrive all properties for each atom
     #atomProps[i][j] gives property j for itom i
-    atomProps = np.array([[atom.GetProp(prop) for prop in props] for atom in
-                         atoms])
-     
+    atomProps = np.array(
+        [[atom.GetProp(prop) for prop in props] for atom in atoms])
+
     #construct autocorrelation vector
     nAtoms = mol.GetNumAtoms()
     for i in xrange(nAtoms):
         iAtom = mol.GetAtomWithIdx(i)
         for j in xrange(i, nAtoms):
             jAtom = mol.GetAtomWithIdx(j)
-            
+
             #get path length between this pair of atoms
             if i != j:
-                pathlen = len(Chem.GetShortestPath(mol, i, j))-1
+                pathlen = len(Chem.GetShortestPath(mol, i, j)) - 1
                 '''
                 this part is little bit confusing, we should consult with Aaron
                 for his advice on this
@@ -232,8 +249,8 @@ def AutoCorreationVector(mol, props, maxBonds):
 
             #add component to autocorrelation vectors
             for iprop, prop in enumerate(props):
-                ACVector[iprop][pathlen] += (atomProps[i][iprop]*
-                                             atomProps[j][iprop])
+                ACVector[iprop][pathlen] += (
+                    atomProps[i][iprop] * atomProps[j][iprop])
 
     return ACVector
 
@@ -241,14 +258,16 @@ def AutoCorreationVector(mol, props, maxBonds):
 ############################################################
 # Calculation of Molecular Quantum Numbers as given by Nguyen
 # in ChemMedChem 4: 1803-5(2009)
-# it is also a built-in function RDkit 
+# it is also a built-in function RDkit
 ############################################################
+
 
 def CalcMQNs(mol):
     molAddH = Chem.AddHs(mol)
     MQNs = AllChem.MQNs_(molAddH)
 
     return MQNs
+
 
 ############################################################
 # Calculation of synthetic accessibility score as described in :
@@ -259,7 +278,8 @@ def CalcMQNs(mol):
 
 _fscores = None
 
-def ReadFragScores(name = 'fpscores'):
+
+def ReadFragScores(name='fpscores'):
     import gzip
     global _fscores
     #generate the full path filename
@@ -273,19 +293,21 @@ def ReadFragScores(name = 'fpscores'):
             outDict[i[j]] = float(i[0])
     _fscores = outDict
 
+
 def NumBridgeheadsAndSpiro(mol, ri=None):
     nSpiro = AllChem.CalcNumSpiroAtoms(mol)
     nBridgehead = AllChem.CalcNumBridgeheadAtoms(mol)
 
     return nBridgehead, nSpiro
 
+
 def CalcSAScore(mol):
     if _fscores is None:
         ReadFragScores()
-    
+
     #fragment score
-    fp = AllChem.GetMorganFingerprint(mol,
-                                      2) #<- 2 is the *radius* of the circular fingerprint
+    fp = AllChem.GetMorganFingerprint(
+        mol, 2)  #<- 2 is the *radius* of the circular fingerprint
     fps = fp.GetNonzeroElements()
     score1 = 0.0
     nf = 0
@@ -297,7 +319,8 @@ def CalcSAScore(mol):
 
     #features score
     nAtoms = mol.GetNumAtoms()
-    nChiralCenters = len(Chem.FindMolChiralCenters(mol, includeUnassigned=True))
+    nChiralCenters = len(
+        Chem.FindMolChiralCenters(mol, includeUnassigned=True))
     ri = mol.GetRingInfo()
     nBridgehead, nSpiro = NumBridgeheadsAndSpiro(mol, ri)
     nMacrocycles = 0
@@ -317,7 +340,7 @@ def CalcSAScore(mol):
     if nMacrocycles > 0:
         macrocyclePenalty = math.log10(2)
 
-    score2 = 0.0 - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty 
+    score2 = 0.0 - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty
 
     # correction for the fingerprint density
     # not in the original publication
@@ -325,7 +348,7 @@ def CalcSAScore(mol):
     score3 = 0.0
     if nAtoms > len(fps):
         score3 = math.log(float(nAtoms) / len(fps)) * 0.5
-    
+
     sascore = score1 + score2 + score3
 
     # need to transform "raw" value into scale between 1 and 10
@@ -342,16 +365,19 @@ def CalcSAScore(mol):
 
     return sascore
 
+
 ############################################################
-# Calculation of molar LogP and molar refractivity as given by 
+# Calculation of molar LogP and molar refractivity as given by
 # Crippen in J Chem Inf Comp Sci 1999 39(5) 868-873
 # Also provided as built-in function in RDKit
 ############################################################
+
 
 def CalcCrippenLogPAndMR(mol):
     LogP, MR = AllChem.CalcCrippenDescriptors(mol)
 
     return LogP, MR
+
 
 ############################################################
 # Determine a molecule type according to ring analysis,
@@ -359,12 +385,12 @@ def CalcCrippenLogPAndMR(mol):
 # fused-heterocycle, fused-cycle, polyheterocyclic, monoheterocyclic,
 # polycyclic, monocyclic, heteroacyclic, acyclic
 ############################################################
-
 '''
 currently it is shown that this function is not called in any other modules, so
 we will keep it on hold for further revision since it could be useful in some
 cases.
 '''
 
+
 def ClassifyMolType(mol):
-   return 0
+    return 0

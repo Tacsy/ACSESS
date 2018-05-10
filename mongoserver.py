@@ -2,13 +2,13 @@
 #-*- coding: utf-8 -*-
 import sys
 import os
-
 '''
 this is the script that copies from Chetan's PO-ACSESS version that calls
 MongoDB to store some value
 '''
 
 hostfile = ''
+
 
 def MongoServerInit():
     # establish connection to mongo server, save ACSESS database connection.
@@ -23,10 +23,11 @@ def MongoServerInit():
     client = pymongo.MongoClient(hostname)
     mydb = client['ACSESS']
 
+
 def UpdateDB(colname, values):
     # update database with all stored SMILES/value pairs
 
-    mongoDocs = [{'_id':k, 'val':v} for k, v in values.iteritems()]
+    mongoDocs = [{'_id': k, 'val': v} for k, v in values.iteritems()]
 
     col = mydb[colname]
     try:
@@ -35,14 +36,13 @@ def UpdateDB(colname, values):
         print "WARNING: duplicate keys detected"
         print dke.args[0]
 
+
 def LookupDB(colname, smiles):
     # return list with stored values for all SMILES in 'smiles'
     col = mydb[colname]
-    query = col.find({"_id":{"$in":smiles}})
+    query = col.find({"_id": {"$in": smiles}})
 
-    memos = {q['_id']:q['val'] for q in query}
+    memos = {q['_id']: q['val'] for q in query}
     results = [memos.get(s, None) for s in smiles]
 
     return results
-
-

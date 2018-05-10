@@ -3,14 +3,17 @@
 import os
 from rdkit import Chem
 
-#These exceptions are used only for signaling 
+#These exceptions are used only for signaling
 #which means no molecular information is carried with them
+
 
 class NoGeom(Exception):
     pass
 
+
 class NoConvergence(Exception):
     pass
+
 
 #Subexceptions of the MolFail exception can carry lots of information
 #about a troublesome molecule with them.
@@ -18,38 +21,35 @@ class NoConvergence(Exception):
 #If the exception isn't caught, it will dump a lot of information to stdout,
 #and write the offending molecule to failMol.smi
 
+
 class MolFail(Exception):
-    def __init__(self, mol = None, message = None):
+    def __init__(self, mol=None, message=None):
         self.message = message
         self.mol = mol
 
     def __str__(self):
         fatalformat = '{0:>4} {1:>8} {2:>17} {3:>11} {4:>13} {5}\n'
-        outstring= '-------------- FATAL ERROR --------------\n\n'
+        outstring = '-------------- FATAL ERROR --------------\n\n'
         if self.message is not None:
-            outstring += self.message+'\n\n'
+            outstring += self.message + '\n\n'
 
         if self.mol is not None:
             outstring += 'Type: ' + str(type(self.mol))
             outstring += '\nCanonical smiles: ' + Chem.MolToSmiles(self.mol)
-            outstring += '\nIsomeric smiles: ' + Chem.MolToSmiles(self.mol,
-                          isomericSmiles = True)
+            outstring += '\nIsomeric smiles: ' + Chem.MolToSmiles(
+                self.mol, isomericSmiles=True)
             outstring += '\n\n************Atoms**************\n'
-            outstring += fatalformat.format('Idx','Element',
-                                            'ExplicitValence',
-                                            '#Hydrogens','FormalCharge','Data')
+            outstring += fatalformat.format('Idx', 'Element',
+                                            'ExplicitValence', '#Hydrogens',
+                                            'FormalCharge', 'Data')
             for atom in self.mol.GetAtoms():
-                outstring += fatalformat.format(atom.GetIdx(),
-                                                atom.GetAtomicNum(),
-                                                atom.GetExplicitValence(),
-                                                atom.GetTotalNumHs(
-                                                    includeNeighbors = False),
-                                                atom.GetFormalCharge(),
-                                                atom.GetPropsAsDict(
-                                                    includePrivate = False))
-
-                                                
-            
+                outstring += fatalformat.format(
+                    atom.GetIdx(),
+                    atom.GetAtomicNum(),
+                    atom.GetExplicitValence(),
+                    atom.GetTotalNumHs(includeNeighbors=False),
+                    atom.GetFormalCharge(),
+                    atom.GetPropsAsDict(includePrivate=False))
             '''
             Need to rewrite when more familiar with bond in rdkit
 
@@ -80,17 +80,22 @@ class MolFail(Exception):
 # Other exception possibilities
 ################################
 
+
 class MutateFail(MolFail):
     pass
+
 
 class BadMolecule(MolFail):
     pass
 
+
 class MutateFatal(MolFail):
     pass
 
+
 class GroupAlreadyAssigned(MolFail):
     pass
+
 
 class ChemistryError(MolFail):
     pass
