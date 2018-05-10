@@ -38,9 +38,9 @@ def Init():
     # objective output
     if mprms.optimize:
         if mprms.restart:
-            fitnessFile = open('Fitness.dat', 'a')
+            fitnessFile = open('fitness.dat', 'a')
         else:
-            fitnessFile = open('Fitness.dat', 'w')
+            fitnessFile = open('fitness.dat', 'w')
             fitnessFile.write(" ".join(fitnesscolumns))
             fitnessFile.write("\n")
     return
