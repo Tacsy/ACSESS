@@ -91,7 +91,7 @@ def evolve():
         print '\nLIBRARY DIVERSITY: ', siml
 
         # 7. POSTLOGGING
-        with open('mylib', 'w') as f:
+        with open('mylib.smi', 'w') as f:
             for mol in lib:
                 f.write(Chem.MolToSmiles(mol) + '\n')
         if gen % mprms.writeInterval == 0 or gen == mprms.nGen - 1:
