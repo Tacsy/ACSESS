@@ -41,6 +41,7 @@ extrafilters = []
 GeomFilter = lambda x: False
 MAXTRY = 10
 SAScore = 0.0
+verbose = True
 
 ############################################################
 #       Functions from Filter.py
@@ -93,8 +94,9 @@ def FixAndFilter(mol):
     try:
         Chem.SetAromaticity(mol)
     except Exception as e:
-        print "didn't manage to set aromaticity for:",
-        print Chem.SetAromaticity(mol)
+        if verbose:
+            print "didn't manage to set aromaticity for:",
+            print Chem.MolToSmiles(mol)
 
     # 2. filter
     changed, filt = FixFilters(mol)
@@ -103,8 +105,9 @@ def FixAndFilter(mol):
     try:
         Chem.Kekulize(mol, True)
     except Exception as e:
-        print "didn't manage to kekulize:",
-        print Chem.MolToSmiles(mol),
+        if verbose:
+            print "didn't manage to kekulize:",
+            print Chem.MolToSmiles(mol),
         filt = 'unkekulizable'
 
     # 4. Sanitize if Fixroutines changed the molecule

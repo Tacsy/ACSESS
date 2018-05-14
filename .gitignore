@@ -4,3 +4,6 @@
 
 # ignore my testrun part
 /Examples/testRun_Xuyan/*
+/Examples/*.smi
+/Examples/*.dat
+/Examples/*.mol
