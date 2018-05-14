@@ -141,12 +141,14 @@ def FixFilters(mol):
                 try:
                     Chem.Kekulize(mol, True)
                 except ValueError:
-                    raise MutateFail
+                    #raise MutateFail
+                    success = False
+                    changed = True
                 if debug: print Chem.MolToSmiles(mol)
                 # 2. Fix:
                 try:
                     success = ActiveFilters[ft].Fix(mol)
-                except MutateFail:
+                except (MutateFail, ValueError) as e:
                     success = False
                     changed = True
                 # 3. Force set back to Aromatic. It that fails->fail

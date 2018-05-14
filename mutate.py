@@ -22,8 +22,8 @@ debug = False
 
 def Init():
     #elements = mprms.elements
-    halogens = [9, 17, 35, 53]
     global elements, halogens
+    halogens = [9, 17, 35, 53]
 
     #do intersection and difference
     Elements = set(elements) - set(halogens)

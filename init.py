@@ -24,13 +24,13 @@ def Initialize():
     def goodvar(var, mod):
         return notbuiltin(var) and normalvar(getattr(mod, var))
 
-    # set random seed
+    # set&log random seed
     if hasattr(mprms, 'rseed'):
         random.seed(mprms.rseed)
     else:
-        seed = random.randint(1, 1000)
-        print "random seed:", seed
-        random.seed(seed)
+        mprms.rseed = random.randint(1, 1000)
+        random.seed(mprms.rseed)
+    print "random seed:", mprms.rseed
 
     # force mprms to have some properties
     if not hasattr(mprms, 'optimize'):
