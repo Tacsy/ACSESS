@@ -23,10 +23,11 @@ mcode = None
 fpcode = None
 mfunc = None
 
+
 def Init():
 
     global mcode, fpcode, mfunc
-    
+
     #check requested fingerprint existance
     if not fpcode.has_key(fp):
         print 'Unrecognized fingerprint (mprms.fp): ' + fp
@@ -45,7 +46,7 @@ def Init():
     mfunc = mfuncs[measure]
 
 
-def FPDB(mols,fpcode):
+def FPDB(mols, fpcode):
     '''
 import random
 Generate fingerprint database based on given fpcode
@@ -53,7 +54,7 @@ Generate fingerprint database based on given fpcode
     return [fpcode(mol) for mol in mols]
 
 
-def GenFPSimMatrix(mols,mfunc,fpcode):
+def GenFPSimMatrix(mols, mfunc, fpcode):
     '''
     Compute similarity matrix using given fingerprint and similarity measure
     
@@ -61,24 +62,24 @@ def GenFPSimMatrix(mols,mfunc,fpcode):
     We either need special cases to handle this or just not use lingo.
     '''
     #get the fingerprint database
-    fps = FPDB(mols,fpcode)
+    fps = FPDB(mols, fpcode)
 
     n = len(mols)
-    sim = np.zeros((n,n))
+    sim = np.zeros((n, n))
     #diagonal terms are set to be -1
     for i in range(n):
-        sim[i,i] = -1
+        sim[i, i] = -1
     #off-diagonal terms
-    for i in range(1,n):
+    for i in range(1, n):
         for j in range(i):
-            sim_ij = mfunc[fps[i],fps[j]]
-            sim[i,j] = sim_ij
-            sim[j,i] = sim[i,j]
+            sim_ij = mfunc[fps[i], fps[j]]
+            sim[i, j] = sim_ij
+            sim[j, i] = sim[i, j]
 
     return sim
 
 
-def FPMaximin(mols,nMol,sim=None,mfunc=None,fpcode=None):
+def FPMaximin(mols, nMol, sim=None, mfunc=None, fpcode=None):
     '''
     Maximin maximum diversity selection using fingerprint similarity as a
     measure
@@ -95,17 +96,17 @@ def FPMaximin(mols,nMol,sim=None,mfunc=None,fpcode=None):
             print 'Need to assign fingerprint and similarity measure'
             raise KeyError('Unassigned parameters')
         else:
-            sim = GenFPSimMatrix(mols,mfunc,fpcode)
-    
+            sim = GenFPSimMatrix(mols, mfunc, fpcode)
+
     if nMol > len(mols):
         print 'ERROR: requested subset is larger than parent library.'
         raise Exception
     selected = [False] * len(mols)
     newmols = []
-    
+
     for i in range(nMol):
         if i == 0:
-            minsimmol = random.randrange(0,len(mols),1)
+            minsimmol = random.randrange(0, len(mols), 1)
             minsim = 0.0
         else:
             minsim = 2.0
@@ -114,8 +115,8 @@ def FPMaximin(mols,nMol,sim=None,mfunc=None,fpcode=None):
                     continue
                 maxsim = -1.0
                 for j in newmols:
-                    if sim[i,j] > maxsim:
-                        maxsim = sim[i,j]
+                    if sim[i, j] > maxsim:
+                        maxsim = sim[i, j]
                 if maxsim < minsim:
                     minsim = maxsim
                     minsimmol = i
@@ -126,7 +127,8 @@ def FPMaximin(mols,nMol,sim=None,mfunc=None,fpcode=None):
 
     return newmols
 
-def NNSimilarity(mols,sim=None,mfunc=None,fpcode=None):
+
+def NNSimilarity(mols, sim=None, mfunc=None, fpcode=None):
     '''
     Calculate average nearest neighbor similarity
     (a diverse library should MINIMIZE this function)
@@ -139,12 +141,12 @@ def NNSimilarity(mols,sim=None,mfunc=None,fpcode=None):
             print 'Need to assign fingerprint and similarity measure'
             raise KeyError('Unassigned parameters')
         else:
-            sim = GenFPSimMatrix(mols,mfunc,fpcode)
+            sim = GenFPSimMatrix(mols, mfunc, fpcode)
         for imol in range(len(mols)):
             div += sim[imol].max()
     else:
         #with storaged similarity matrix version
         for imol in range(len(mols)):
             div += sim[imol].max()
-    
-    return div/len(mols)
+
+    return div / len(mols)

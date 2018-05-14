@@ -7,27 +7,29 @@ import mprms
 import numpy as np
 
 startTime = time.time()
-debug=False
+debug = False
 
 ##########################
 # Initialize output files
 ##########################
 
-statcolumns=('gen', 'diversity', 'nCand', 'nFilt', 'nDups', 'nExcp', 'nUnFit',
-        'nAdd', 'nAddFail', 'nAddArRing', 'nAddArRingFail',
-        'nAtomType', 'nAtomTypeFail',
-        'nBreak', 'nBreakFail', 'nFlip', 'nFlipFail',
-        'nNewRing', 'nNewRingFail', 'nRemove', 'nRemoveFail',
-        'nNoMutation')
-fitnesscolumns=('gen', 'NumIn', 'NumOut', 'nSwap', 'AvgFVal', 'MinFVal', 'MaxFVal', 'CutOff')
+statcolumns = ('gen', 'diversity', 'nCand', 'nFilt', 'nDups', 'nExcp',
+               'nUnFit', 'nAdd', 'nAddFail', 'nAddArRing', 'nAddArRingFail',
+               'nAtomType', 'nAtomTypeFail', 'nBreak', 'nBreakFail', 'nFlip',
+               'nFlipFail', 'nNewRing', 'nNewRingFail', 'nRemove',
+               'nRemoveFail', 'nNoMutation')
+fitnesscolumns = ('gen', 'NumIn', 'NumOut', 'nSwap', 'AvgFVal', 'MinFVal',
+                  'MaxFVal', 'CutOff')
+
+
 def Init():
     global statsFile, filterFile, fitnessFile
     if mprms.restart:
         statsFile = open('stats.dat', 'a')
-        filterFile= open('filters.dat','a')
+        filterFile = open('filters.dat', 'a')
     else:
         statsFile = open('stats.dat', 'w')
-        filterFile= open('filters.dat','w')
+        filterFile = open('filters.dat', 'w')
         statsFile.write(" ".join(statcolumns[:7]))
         statsFile.write(" \\\n    ")
         statsFile.write(" ".join(statcolumns[7:]))
@@ -36,12 +38,13 @@ def Init():
     # objective output
     if mprms.optimize:
         if mprms.restart:
-            fitnessFile=open('Fitness.dat','a')
+            fitnessFile = open('Fitness.dat', 'a')
         else:
-            fitnessFile=open('Fitness.dat','w')
+            fitnessFile = open('Fitness.dat', 'w')
             fitnessFile.write(" ".join(fitnesscolumns))
             fitnessFile.write("\n")
     return
+
 
 ##########################
 # Statistics function
@@ -49,9 +52,10 @@ def Init():
 
 statsHead = "\n\tSTATISTICS:"
 from collections import defaultdict
-_default = lambda:0
-_default.__name__='lambda:0'
-stats=defaultdict(_default)
+_default = lambda: 0
+_default.__name__ = 'lambda:0'
+stats = defaultdict(_default)
+
 
 def PrintStat(nColumn=4, flush=True):
     global stats
@@ -64,12 +68,13 @@ def PrintStat(nColumn=4, flush=True):
             statsFile.write(" {:4d} ".format(stats[key]))
         except ValueError:
             statsFile.write(" {:14.7f} ".format(stats[key]))
-        if i==6: statsFile.write("|")
+        if i == 6: statsFile.write("|")
     statsFile.write("\n")
     if flush:
         sys.stdout.flush()
         stats.clear()
     return
+
 
 def PrintObjectiveStat(obstats, nColumn=4, flush=True):
     for key in fitnesscolumns[:4]:
@@ -95,6 +100,7 @@ timings = {}
 timeRunning = {}
 totalTimes = {}
 
+
 def StartTimer(key):
     global timeRunning
     if debug:
@@ -104,11 +110,12 @@ def StartTimer(key):
     else:
         timeRunning[key] = time.time()
 
+
 def EndTimer(key):
-    global timeRunning, timings 
+    global timeRunning, timings
     if debug:
         print "Ending timer: " + key
-    #get runtime 
+    #get runtime
     runTime = time.time() - timeRunning[key]
     timeRunning.pop(key)
     if timings.has_key(key):
@@ -116,27 +123,33 @@ def EndTimer(key):
     else:
         timings[key] = runTime
 
+
 from functools import wraps
+
+
 def logtime():
     def decorate(f):
         @wraps(f)
-        def wrapped(*args,**kwargs):
-            name = f.__name__.replace('Drive',' ')
+        def wrapped(*args, **kwargs):
+            name = f.__name__.replace('Drive', ' ')
             StartTimer(name)
-            r = f(*args,**kwargs)
+            r = f(*args, **kwargs)
             EndTimer(name)
             return r
+
         return wrapped
+
     return decorate
 
-def PrintTimings(nColumn=4, flush = True):
+
+def PrintTimings(nColumn=4, flush=True):
     global timings, totalTimes
     keys = timings.keys()
     if len(keys) == 0:
         return
     values = timings.values()
     print timingHead
-    PrintDict(timings, nColumn, truncate = True, sort = 'val')
+    PrintDict(timings, nColumn, truncate=True, sort='val')
     if flush:
         for key, value in timings.iteritems():
             if totalTimes.has_key(key):
@@ -144,32 +157,34 @@ def PrintTimings(nColumn=4, flush = True):
             else:
                 totalTimes[key] = value
         timings = {}
-    
     '''
     debug part should be considered
     '''
+
 
 def PrintTotalTimings(nColumn=4):
     global totalTimes
     print totalTimingHead
     if len(totalTimes) == 0:
         return
-    PrintDict(totalTimes, truncate = True, sort = 'val')
+    PrintDict(totalTimes, truncate=True, sort='val')
 
 
 ##########################
 # Printing function
 ##########################
 
-def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
+
+def PrintDict(mydict, nColumn=4, truncate=False, sort=False):
     if sort != False:
         if sort == 'val':
             idx = 1
-            reverse=True
-        elif sort  == 'key':
+            reverse = True
+        elif sort == 'key':
             idx = 0
-            reverse=False
-        keys, values = zip(*sorted(mydict.items(), key = lambda x: x[idx], reverse=reverse))
+            reverse = False
+        keys, values = zip(
+            *sorted(mydict.items(), key=lambda x: x[idx], reverse=reverse))
         keys = list(keys)
         values = list(values)
     else:
@@ -177,10 +192,10 @@ def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
         values = mydict.values()
 
     if truncate:
-        values = ["%.2f"%v for v in values]
-    
+        values = ["%.2f" % v for v in values]
+
     #complation of keys/values in the fashion that fits the format
-    while len(keys)%nColumn != 0:
+    while len(keys) % nColumn != 0:
         keys.append(' ')
         values.append(' ')
 
@@ -194,10 +209,8 @@ def PrintDict(mydict, nColumn=4, truncate = False, sort = False):
     valformat += '|'
 
     for i in xrange(0, len(keys), nColumn):
-        print keyformat.format(*keys[i:i+nColumn])
-        print valformat.format(*values[i:i+nColumn])
+        print keyformat.format(*keys[i:i + nColumn])
+        print valformat.format(*values[i:i + nColumn])
 
     sys.stdout.flush()
     return keys
-
-

@@ -6,6 +6,7 @@ import numpy as np
 
 from rdkit import Chem
 
+
 # Container to hold PCA results
 class PCADecompose():
     def __init__(self, means, evecs, evals, std_devs=None, forceReal=True):
@@ -30,9 +31,9 @@ class PCADecompose():
     def NormCenter(self, data):
         dp = data - self.means
         if self.norm:
-            dp = dp/self.std_devs
+            dp = dp / self.std_devs
         return dp
-    
+
     def Project(self, data, ndims=None):
         if issubclass(type(data), Chem.Mol):
             coords = array([mol.GetProp('coords') for mol in data])
@@ -58,29 +59,29 @@ def PCA(data, nVectors=None, norm=False):
     else:
         X = data
     nData, nDims = X.shape
-    means = X.mean(axis = 0)
+    means = X.mean(axis=0)
 
     # center data by mean
     X_ave = X - mean
-    
+
     # normalize data by stddev
     if norm:
-        std_devs = X.std(axis = 0)
+        std_devs = X.std(axis=0)
         for i in xrange(len(std_devs)):
             if abs(std_devs[i]) < 1e-10:
                 std_devs[i] = 1.0
-        
-        X_ave = X_ave/std_devs
+
+        X_ave = X_ave / std_devs
 
     # covariance matrix
     Cov = dot(X_ave.T, X_ave) / (1.0 * nData)
-    
+
     # diagonalize covariance matrix
     evals, evecs = eig(Cov)
 
     # rank eigenvectors, eigenvalues in order
     sorter = argsort(-evals)
-    
+
     # return a PCADecompose object
     kwargs = {}
     if norm: kwargs['std_devs'] = std_devs

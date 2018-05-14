@@ -5,10 +5,12 @@ from rdkit import Chem
 from rdkithelpers import *
 from copy import deepcopy
 
-ExtraFilters=dict()
+ExtraFilters = dict()
 
 # EXTRA AROMATICITY FILTER
-ExtraFilters['aromatic']=NewFilter('aromatic')
+ExtraFilters['aromatic'] = NewFilter('aromatic')
+
+
 def HasAromaticity(oldmol):
     mol = deepcopy(oldmol)
     try:
@@ -22,18 +24,21 @@ def HasAromaticity(oldmol):
     if len(mol.GetAromaticAtoms()) or mol.HasSubstructMatch(a):
         return False
     return 'not aromatic'
+
+
 ExtraFilters['aromatic'].SetFilterRoutine(HasAromaticity)
 #########################
-
 
 ############################################################
 #       Functions from QiuFilter.py
 ############################################################
 
-ringSizes=[3,4,8]
-bondOrders=[3.0]
-ExtraFilters['qiu1']=NewFilter('checkringsize')
-ExtraFilters['qiu2']=NewFilter('checkbondorder')
+ringSizes = [3, 4, 8]
+bondOrders = [3.0]
+ExtraFilters['qiu1'] = NewFilter('checkringsize')
+ExtraFilters['qiu2'] = NewFilter('checkbondorder')
+
+
 # ensure molecule do not have ring with ring size N
 def CheckRingSize(mol):
     global ringSizes
@@ -44,9 +49,10 @@ def CheckRingSize(mol):
             return True
     return False
 
+
 # ensure molecule do not have a bond with bondorder N
 def CheckBondOrder(mol):
-    # get mol and return bool for filter or not  
+    # get mol and return bool for filter or not
     # bondOrder should be double, 1.0 for single, 1.5 for aromatic, 2.0 for
     # double, 3.0 for triple
     # loop over bonds in molecule and check bond order
@@ -54,153 +60,178 @@ def CheckBondOrder(mol):
         if bond.GetBondTypeAsDouble() in bondOrders:
             return True
     return False
+
+
 ExtraFilters['qiu1'].SetFilterRoutine(CheckRingSize)
 ExtraFilters['qiu2'].SetFilterRoutine(CheckBondOrder)
 
-ExtraFilters['quinoid']=NewFilter('notquinoid')
+ExtraFilters['quinoid'] = NewFilter('notquinoid')
+
+
 def findQuinoid(mol, strict=False):
     #Chem.Kekulize(mol, True)
 
     # quionoid matches
     # the 12 match urges for at least one extra conjugated bond that is not terminal
-    ss12=Chem.MolFromSmarts('[O,o]:,=[#6]~[#6](:,=[O,o])~[#6]=,:*~*')
-    ss14=Chem.MolFromSmarts('[O,o]:,=[#6]-,:[#6,#7]=,:[#6,#7]-,:[#6]:,=[O,o]')
-    ss16=Chem.MolFromSmarts('[O,o]:,=[#6]-,:[#6]=,:[#6,#7]-,:[#6,#7]=,:[#6,#7]-,:[#6]:,=[O,o]')
-    ss18=Chem.MolFromSmarts('[O,o]:,=[#6]-,:[#6]=,:[#6,#7]-,:[#6,#7]=,:[#6,#7]-,:[#6,#7]=,:[#6]-,:[#6]:,=[O,o]')
-    sss=[    ((0, 3), ss12),
-             ((0, 5), ss14),
-             ((0, 7), ss16),
-             ((0, 9), ss18),]
+    ss12 = Chem.MolFromSmarts('[O,o]:,=[#6]~[#6](:,=[O,o])~[#6]=,:*~*')
+    ss14 = Chem.MolFromSmarts(
+        '[O,o]:,=[#6]-,:[#6,#7]=,:[#6,#7]-,:[#6]:,=[O,o]')
+    ss16 = Chem.MolFromSmarts(
+        '[O,o]:,=[#6]-,:[#6]=,:[#6,#7]-,:[#6,#7]=,:[#6,#7]-,:[#6]:,=[O,o]')
+    ss18 = Chem.MolFromSmarts(
+        '[O,o]:,=[#6]-,:[#6]=,:[#6,#7]-,:[#6,#7]=,:[#6,#7]-,:[#6,#7]=,:[#6]-,:[#6]:,=[O,o]'
+    )
+    sss = [
+        ((0, 3), ss12),
+        ((0, 5), ss14),
+        ((0, 7), ss16),
+        ((0, 9), ss18),
+    ]
 
-    qmatch=0
-    ssss=[ss12, ss14, ss16, ss18]
+    qmatch = 0
+    ssss = [ss12, ss14, ss16, ss18]
     if True:
-        matches=set()
+        matches = set()
         for qinds_p, ss in sss:
             for match in mol.GetSubstructMatches(ss):
                 for idx, ma in zip(match, GetIAtoms(match, mol)):
-                    if ma.GetAtomicNum()==8:
+                    if ma.GetAtomicNum() == 8:
                         matches.add(idx)
-        if len(matches)<2:
+        if len(matches) < 2:
             #print "no match:", Chem.MolToSmiles(mol)
             return True
-        elif len(matches)>3:
+        elif len(matches) > 3:
             #print "multiple matches:", Chem.MolToSmiles(mol)
             return True
         mol.SetProp('quinoid_indices', " ".join(map(str, list(matches))))
     for ss in ssss:
-        if mol.HasSubstructMatch(ss): qmatch+=1
-    if True: # molecule needs to have at least conjugated path length of 5 atoms or a conjugated 5/6 ring
-        rmatch=0
+        if mol.HasSubstructMatch(ss): qmatch += 1
+    if True:  # molecule needs to have at least conjugated path length of 5 atoms or a conjugated 5/6 ring
+        rmatch = 0
         # some extra requirements:
-        ring5a = Chem.MolFromSmarts('*1:,=*:,-*:,=*~*1') #i.e. 5 ring with two internal double bonds
-        ring5b = Chem.MolFromSmarts('*1~*(=*)~*=*~*1') #i.e. 5 ring with double bonds. one internal one external
-        ring6a = Chem.MolFromSmarts('*1~*=,:*-,:*=,:*~*1') #i.e. 6 ring with two internal double bonds in a conjugated pattern
+        ring5a = Chem.MolFromSmarts(
+            '*1:,=*:,-*:,=*~*1')  #i.e. 5 ring with two internal double bonds
+        ring5b = Chem.MolFromSmarts(
+            '*1~*(=*)~*=*~*1'
+        )  #i.e. 5 ring with double bonds. one internal one external
+        ring6a = Chem.MolFromSmarts(
+            '*1~*=,:*-,:*=,:*~*1'
+        )  #i.e. 6 ring with two internal double bonds in a conjugated pattern
         ring6b = Chem.MolFromSmarts('*1~*=,:*-,:*(:,=*)~*~*1')
         conjp = Chem.MolFromSmarts('*=*-*=*:,-*:,=*')
-        extrar=[ring5a, ring5b, ring6a, ring6b, conjp]
+        extrar = [ring5a, ring5b, ring6a, ring6b, conjp]
         for r in extrar:
-            if mol.HasSubstructMatch(r): rmatch+=1
-        requirement = qmatch>0 and rmatch>0
-    else:requirement = qmatch>0
-    if True: #set maximum number of carbonyl groups
-        nmax_co=4
-        n_co=0
+            if mol.HasSubstructMatch(r): rmatch += 1
+        requirement = qmatch > 0 and rmatch > 0
+    else:
+        requirement = qmatch > 0
+    if True:  #set maximum number of carbonyl groups
+        nmax_co = 4
+        n_co = 0
         carbonyl = Chem.MolFromSmarts('[#6]=,:[#8;X1]')
         for match in mol.GetSubstructMatches(carbonyl):
-            n_co+=1
-        requirement = requirement and n_co<=nmax_co
+            n_co += 1
+        requirement = requirement and n_co <= nmax_co
 
     # since when okay has to return False:
     if aromatic: Chem.SetAromaticity(mol)
     return not requirement
-ExtraFilters['quinoid'].SetFilterRoutine(findQuinoid)
 
+
+ExtraFilters['quinoid'].SetFilterRoutine(findQuinoid)
 
 ############################################
 #           MY RADICAL FILTERS            #
 ############################################
-DE=True
-ExtraFilters['radical']=NewFilter('not a radical')
+DE = True
+ExtraFilters['radical'] = NewFilter('not a radical')
+
+
 def FindRadical(mol):
     smi_before = Chem.MolToSmiles(mol)
     print "smi_before:", smi_before
 
-    # 1. Test for radical centers. 
-    nradcenters=0
+    # 1. Test for radical centers.
+    nradcenters = 0
     for atom in mol.GetAtoms():
         num = atom.GetAtomicNum()
         idx = atom.GetIdx()
-        if not num==1.0: #i.e. we dont want to look for an explicit H
+        if not num == 1.0:  #i.e. we dont want to look for an explicit H
             totalbondorder = atom.GetTotalValence()
-            atomcharge     = atom.GetFormalCharge()
+            atomcharge = atom.GetFormalCharge()
 
         # Test if single radical centers present: also Si/P/S included
-        possible_radicals=[(6, 3), (7, 2), (8,1), (14, 3), (15, 2), (16,1)]
+        possible_radicals = [(6, 3), (7, 2), (8, 1), (14, 3), (15, 2), (16, 1)]
         for RadAtNum, RadTotalBondorder in possible_radicals:
-            if num==RadAtNum and atomcharge==0:
+            if num == RadAtNum and atomcharge == 0:
                 print RadAtNum, RadTotalBondorder, num, totalbondorder
-                if totalbondorder==RadTotalBondorder:
-                    nradcenters+=1
+                if totalbondorder == RadTotalBondorder:
+                    nradcenters += 1
     print "nradcenters:", nradcenters
 
     # 2. Test for specific stable radical patterns
-    rphenoxyl1a=Chem.MolFromSmarts('a1aaaaa1~[C,c]~[O,o;v1]')
-    rphenoxyl1b=Chem.MolFromSmarts('a1aaaaa1~[O,o;v1]')
-    rphenoxyl2a=Chem.MolFromSmarts('C1=CC=CC=C1-[O;v1]')
-    rphenoxyl2b=Chem.MolFromSmarts('C1=CC=CC=C1-C(=*)-[O;v1]')
-    rphenoxyl22=Chem.MolFromSmarts('[CX3]1~[CX3]~[CX3]~[CX3]~[CX3]~[CX3]1~[CX3]~[O,o;v1]')
-    rphenalenyl1=Chem.MolFromSmarts('a1aaaaa1~[C,c;v3]')
-    rphenalenyl2=Chem.MolFromSmarts('C1=CC=CC=C1[C;v3]')
-    rphenoxyl3=Chem.MolFromSmarts('[O,o;v1]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
-    rphenalenyl3=Chem.MolFromSmarts('[C,c;v3]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1')
+    rphenoxyl1a = Chem.MolFromSmarts('a1aaaaa1~[C,c]~[O,o;v1]')
+    rphenoxyl1b = Chem.MolFromSmarts('a1aaaaa1~[O,o;v1]')
+    rphenoxyl2a = Chem.MolFromSmarts('C1=CC=CC=C1-[O;v1]')
+    rphenoxyl2b = Chem.MolFromSmarts('C1=CC=CC=C1-C(=*)-[O;v1]')
+    rphenoxyl22 = Chem.MolFromSmarts(
+        '[CX3]1~[CX3]~[CX3]~[CX3]~[CX3]~[CX3]1~[CX3]~[O,o;v1]')
+    rphenalenyl1 = Chem.MolFromSmarts('a1aaaaa1~[C,c;v3]')
+    rphenalenyl2 = Chem.MolFromSmarts('C1=CC=CC=C1[C;v3]')
+    rphenoxyl3 = Chem.MolFromSmarts(
+        '[O,o;v1]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1'
+    )
+    rphenalenyl3 = Chem.MolFromSmarts(
+        '[C,c;v3]1~[#6,#7]=,:[#6;H0,#7;H0]2~[#6,#7](~[#6,#7]~[#6,#7]~[#6,#7]~[#6,#7]2)~[#6,#7]~[#6,#7]1'
+    )
 
-    sss={
-         'PHENOXYL1a':rphenoxyl1a,
-         'PHENOXYL1b':rphenoxyl1b,
-         'PHENOXYL2a':rphenoxyl2a,
-         'PHENOXYL2b':rphenoxyl2b,
-         'PHENOXYL22':rphenoxyl22,
-         'PHENOXYL3':rphenoxyl3,
-         'PHENALENYL1':rphenalenyl1,
-         'PHENALENYL2':rphenalenyl2,
-         'PHENALENYL3':rphenalenyl3
-         }
-    nmatch=0
+    sss = {
+        'PHENOXYL1a': rphenoxyl1a,
+        'PHENOXYL1b': rphenoxyl1b,
+        'PHENOXYL2a': rphenoxyl2a,
+        'PHENOXYL2b': rphenoxyl2b,
+        'PHENOXYL22': rphenoxyl22,
+        'PHENOXYL3': rphenoxyl3,
+        'PHENALENYL1': rphenalenyl1,
+        'PHENALENYL2': rphenalenyl2,
+        'PHENALENYL3': rphenalenyl3
+    }
+    nmatch = 0
     for name, ss in sss.iteritems():
         for match in mol.GetSubstructMatches(ss):
-            nmatch+=1
+            nmatch += 1
 
     # 3. Test if requirements are fullfilled.
-    if nradcenters==0:
+    if nradcenters == 0:
         return "no radical center"
-    elif nradcenters>0 and nmatch==0:
+    elif nradcenters > 0 and nmatch == 0:
         return "not a valid radical"
-    elif nradcenters==0 and nmatch>0:
+    elif nradcenters == 0 and nmatch > 0:
         return "this shouldn't be possible"
     else:
         return False
 
+
 def FindRadical_old(mol):
     # test presence of max 1 normal radical center:
-    rc=Chem.MolFromSmarts('[C;v3;+0]')
-    ro=Chem.MolFromSmarts('[O;v1;+0]')
-    rn=Chem.MolFromSmarts('[N;v2;+0]')
-    sss=[rc, ro, rn]
-    once=0
+    rc = Chem.MolFromSmarts('[C;v3;+0]')
+    ro = Chem.MolFromSmarts('[O;v1;+0]')
+    rn = Chem.MolFromSmarts('[N;v2;+0]')
+    sss = [rc, ro, rn]
+    once = 0
     for ss in sss:
         oe.OEPrepareSearch(mol, ss)
         for match in ss.Match(mol):
             for ma in match.GetAtoms():
                 radcenter = ma.target.GetIdx()
                 mol.SetData('radcenter', radcenter)
-            once+=1
-    if once==1:#only one radical center
+            once += 1
+    if once == 1:  #only one radical center
         return False
-    elif once==0:
+    elif once == 0:
         return True
     else:
         return True
 
-ExtraFilters['radical'].SetFilterRoutine(FindRadical)
 
+ExtraFilters['radical'].SetFilterRoutine(FindRadical)

@@ -7,7 +7,7 @@ import numpy as np
 from mpi4py import MPI
 
 import output
-mpi=False
+mpi = False
 '''
 this module include various previous modules that coorespnds to parallelization
 in order to make the code in a cleaner way, including:
@@ -24,7 +24,7 @@ in order to make the code in a cleaner way, including:
 
 # A class for SIMD (single instruction multiple data) parallelization.
 # Any "instruction" (i.e. python function) that will be called must
-# be registered with the object on all nodes by calling 
+# be registered with the object on all nodes by calling
 # MPITaskInstance.RegisterFunction.
 #
 # The function to be called is broadcast from the master using SetFunction.
@@ -34,6 +34,7 @@ in order to make the code in a cleaner way, including:
 QUIT = 42
 SHUTDOWN = 'SHUTDOWN'
 signaldone = [np.array([1], dtype='i'), 'i']
+
 
 class MPITask():
     def __init__(self, myComm=MPI.COMM_WORLD):
@@ -52,7 +53,7 @@ class MPITask():
             self.stdout = sys.stdout
         else:
             self.IsMaster = False
-            sys.stdout = open('node%i.out' %self.rank, 'a')
+            sys.stdout = open('node%i.out' % self.rank, 'a')
             self.stdout = sys.stdout
             sys.stderr = self.stdout
 
@@ -73,9 +74,9 @@ class MPITask():
                 if self.verbose:
                     print 'MPI Task Registered: ' + func.func_name
             else:
-                raise NameError('Function with name "' + func.func_name + 
+                raise NameError('Function with name "' + func.func_name +
                                 '" is already registered.')
-    
+
     #set the function to distribute
     def SetFunction(self, *args):
         fname = ''
@@ -102,7 +103,7 @@ class MPITask():
     #mpi run
     def RunMPI(self, distData):
         starttime = time.time()
-        nData = self.comm.bcast([len(distData)], root=0) #synchronize w/root
+        nData = self.comm.bcast([len(distData)], root=0)  #synchronize w/root
         self.IdleTime += time.time() - starttime
         if self.rank == 0:
             return self.ScatterDriver(distData)
@@ -140,11 +141,13 @@ class MPITask():
         if self.verbose:
             print 'Scattering ' + str(len(distData)) + ' total inputs'
         assert self.rank == 0
-        CurrentChunk = [-1] * self.size #CurrentChun[i] == -1 indicates node is idle
+        CurrentChunk = [
+            -1
+        ] * self.size  #CurrentChun[i] == -1 indicates node is idle
         request = [None] * self.size
         rflag = [np.array([0], dtype='i') for i in xrange(self.size)]
 
-        chunk = max(int(len(distData)/(8.0 * self.size)), 1)
+        chunk = max(int(len(distData) / (8.0 * self.size)), 1)
         Done = False
         length = len(distData)
         results = [None] * length
@@ -156,16 +159,18 @@ class MPITask():
                 if request[i] is not None and request[i].Test():
                     resultbuff = self.comm.recv(source=i)
                     request[i] = None
-                    results[CurrentChunk[i]:CurrentChunk[i]+chunk] = resultbuff
+                    results[CurrentChunk[i]:
+                            CurrentChunk[i] + chunk] = resultbuff
                     sys.stdout.flush()
                     if self.verbose and lastitem < length and masterwork != lastitem:
                         print 'Master completed slices ', masterwork, 'to', lastitem
-                        print 'RECV from', i, ': slices', CurrentChunk[i], ' to ', CurrentChunk[i] + chunk -1
+                        print 'RECV from', i, ': slices', CurrentChunk[
+                            i], ' to ', CurrentChunk[i] + chunk - 1
                     CurrentChunk[i] = -1
 
                 #instruct node to start on next segment
                 if lastitem < length and request[i] is None:
-                    self.comm.send(distData[lastitem:lastitem+chunk], dest=i)
+                    self.comm.send(distData[lastitem:lastitem + chunk], dest=i)
                     CurrentChunk[i] = lastitem
                     lastitem += chunk
                     request[i] = self.comm.Irecv(rflag[i], source=i)
@@ -208,7 +213,7 @@ class MPITask():
 
             #do computation while waiting for requests to be finished
             elif self.RunMaster > 0:
-                numtodo = min(self.RunMaster, chunk/2)
+                numtodo = min(self.RunMaster, chunk / 2)
                 if numtodo < 1:
                     numtodo = 1
                 results[lastitem:lastitem+numtodo] = \

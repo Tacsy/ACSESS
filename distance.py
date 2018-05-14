@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 import numpy as np
-from pcadimreduction import PCA 
+from pcadimreduction import PCA
 from scipy.spatial.distance import cdist
 import random
 
@@ -13,9 +13,8 @@ import parallel as pl
 import mongoserver
 import output
 
-metric=None
-NormCoords=False
-
+metric = None
+NormCoords = False
 '''
 this module include various previous modules that corresponds to chemical space
 representation and selection, including:
@@ -33,6 +32,7 @@ representation and selection, including:
 #           Functions from Coords.py
 ############################################################
 
+
 # Initialize coords
 def Init():
     global Coords
@@ -49,6 +49,7 @@ def Init():
     else:
         raise KeyError('Unknown metric specified in parameter file: ' + metric)
 
+
 # Get coordinates
 def SetCoords(mol):
     # set the coordinate of the molecule and return as a np.array object
@@ -61,9 +62,10 @@ def SetCoords(mol):
         SetListProp(mol, 'coords', coord)
     return np.array(coord)
 
+
 # Drive MPI coordinate calculation
 def ScatterCoords(mols):
-    
+
     if not pl.mpi:
         output.StartTimer('COORDS')
         for mol in mols:
@@ -89,7 +91,7 @@ def ScatterCoords(mols):
 
         oldn = len(needCalc)
         needCalc = [mol for mol in mols if not mol.HasProp('coords')]
-        print 'Used %d memorized coordinate values' %(oldn - len(needCalc))
+        print 'Used %d memorized coordinate values' % (oldn - len(needCalc))
 
         if len(needCalc) == 0:
             return None
@@ -105,10 +107,14 @@ def ScatterCoords(mols):
     # Update values in mongo database
     if mprms.UseMongo:
         needSMI = [Chem.MolToSmiles(mol) for mol in needCalc]
-        mongo.UpdateDB(metric, {s: GetListProp(m, 'coords') for s, m in zip(needSMI, needCalc)})
-        print '%d new memorized coordinate values' %len(needCalc)
+        mongo.UpdateDB(
+            metric,
+            {s: GetListProp(m, 'coords')
+             for s, m in zip(needSMI, needCalc)})
+        print '%d new memorized coordinate values' % len(needCalc)
 
     output.EndTimer('COORDS')
+
 
 # Function for scattering coordinate calculations
 #@pl.MPIScatter
@@ -118,10 +124,10 @@ def MPICoordCalc(smistring):
     return SetCoords(mol)
 
 
-
 ############################################################
 #           Functions from Distance.py
 ############################################################
+
 
 def GetStdDevs(mols):
     if type(mols) == np.ndarray:
@@ -129,15 +135,15 @@ def GetStdDevs(mols):
     else:
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])
-    std_dev = np.std(coords,axis=0)
+    std_dev = np.std(coords, axis=0)
     for i in xrange(len(std_dev)):
-        if abs(std_dev[i]) < 1e-10: 
+        if abs(std_dev[i]) < 1e-10:
             std_dev[i] = 1.0
 
     return std_dev
 
 
-def HandleMolCoords(mols,std_dev=None,norm=True):
+def HandleMolCoords(mols, std_dev=None, norm=True):
     #assemble distance vectors
     if type(mols) == np.ndarray:
         coords = mols
@@ -146,30 +152,30 @@ def HandleMolCoords(mols,std_dev=None,norm=True):
         passMols = True
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])
-    
+
     #return coordinates according to normalization or not
     if not norm:
         return passMols, coords
     else:
         #normalize coordinates using given std_dev
         if std_dev is not None:
-            avgs = np.average(coords,axis=0)
-            if not (type(std_dev)==np.ndarray and std_dev.ndim==1):
-                std_dev=GetStdDevs(std_dev)
+            avgs = np.average(coords, axis=0)
+            if not (type(std_dev) == np.ndarray and std_dev.ndim == 1):
+                std_dev = GetStdDevs(std_dev)
 
-            return passMols, (coords-avgs)/std_dev
+            return passMols, (coords - avgs) / std_dev
         #normalize coordinates by their std_dev
         else:
             try:
-                avgs = np.average(coords,axis=0)
+                avgs = np.average(coords, axis=0)
             except TypeError:
                 print coords
                 raise
             std_dev = GetStdDevs(mols)
-            return passMols, (coords-avgs)/std_dev
+            return passMols, (coords - avgs) / std_dev
 
 
-def Maximin(mols,nMol,firstpick=None,startCoords=None,verbose=False):
+def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
     '''
     Maximin maximum diversity selection
     mols can be a numpy array containing the coordinates,
@@ -187,37 +193,39 @@ def Maximin(mols,nMol,firstpick=None,startCoords=None,verbose=False):
         else:
             return mols
     #if # of mols is larger
-    minDist = np.array([np.infty]*len(mols))
+    minDist = np.array([np.infty] * len(mols))
     if startCoords is not None:
         if verbose:
             print 'Calculating starting distances ...'
-        for i in xrange(0,len(startCoords),10):
+        for i in xrange(0, len(startCoords), 10):
             minDist = np.minimum(minDist,
-                            np.min(cdist(startCoords[i:i+10,:],coords),axis=0))
+                                 np.min(
+                                     cdist(startCoords[i:i + 10, :], coords),
+                                     axis=0))
         assert len(minDist) == len(coords)
         minDist = np.array(minDist)
         picks = [np.argmax(minDist)]
     else:
         if firstpick is None:
-            firstpick = random.randint(0,len(mols)-1)
+            firstpick = random.randint(0, len(mols) - 1)
         picks = [firstpick]
 
-    lastcoord = coords[picks[0]:picks[0]+1]
+    lastcoord = coords[picks[0]:picks[0] + 1]
     indices = range(coords.shape[0])
-    
+
     #####################
     # select the subset #
     #####################
-    for i in xrange(nMol-1):
-        dists = cdist(lastcoord,coords)[0]
-        minDist = np.minimum(dists,minDist)
+    for i in xrange(nMol - 1):
+        dists = cdist(lastcoord, coords)[0]
+        minDist = np.minimum(dists, minDist)
         nextpick = minDist.argmax()
         if minDist[nextpick] == 0:
             break
         picks.append(indices[nextpick])
-        lastcoord = coords[nextpick:nextpick+1]
+        lastcoord = coords[nextpick:nextpick + 1]
         #remove redundant molecules from the array
-        if i%1000 == 0:
+        if i % 1000 == 0:
             oldindices = indices
             oldcoords = coords
             oldminDist = minDist
@@ -225,7 +233,7 @@ def Maximin(mols,nMol,firstpick=None,startCoords=None,verbose=False):
             coords = []
             minDist = []
             for j in xrange(len(oldminDist)):
-                if oldminDist[j]>0.0:
+                if oldminDist[j] > 0.0:
                     indices.append(oldindices[j])
                     coords.append(oldcoords[j])
                     minDist.append(oldminDist[j])
@@ -236,17 +244,18 @@ def Maximin(mols,nMol,firstpick=None,startCoords=None,verbose=False):
                 sys.stdout.flush()
 
     #minimum distance went to 0
-    if nMol > 1 and i < nMol-2:
+    if nMol > 1 and i < nMol - 2:
         nleft = nMol - 1 - i
         remaining = set(xrange(len(mols))) - set(picks)
-        picks = picks + random.sample(remaining,nleft)
+        picks = picks + random.sample(remaining, nleft)
 
     if passMols:
         return [mols[i] for i in picks]
     else:
         return picks
 
-def SplitSpace(ids,coords):
+
+def SplitSpace(ids, coords):
     '''
     Split sapce along first PCA coordinate,
     return indices of compounds in the two sets
@@ -254,9 +263,9 @@ def SplitSpace(ids,coords):
     coords = np.array([coords[i] for i in ids])
     pcaDecomp = PCA(coords)
 
-    pc1 = np.real(np.dot(coords,pcadecomp.evecs[:,0]))
-    avg = sum(pc1)/len(ids)
-    std_dev = np.sqrt(sum((pc1-avg)**2)/len(ids))
+    pc1 = np.real(np.dot(coords, pcadecomp.evecs[:, 0]))
+    avg = sum(pc1) / len(ids)
+    std_dev = np.sqrt(sum((pc1 - avg)**2) / len(ids))
 
     iPlus = []
     iMinus = []
@@ -267,12 +276,13 @@ def SplitSpace(ids,coords):
         else:
             iMinus.append(ids[i])
 
-        if abs(pc-avg) <= 0.1*std_dev:
+        if abs(pc - avg) <= 0.1 * std_dev:
             iBound.add(i)
 
     return iPlus, iMinus, iBound
 
-def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
+
+def PCAMaximin(mols, nMol, nsplit=None, verbose=False):
     '''
     Maximin maximum diversity selection -
     Distribute over multiple nodes by splitting the space using PCA
@@ -298,7 +308,7 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
             return range(len(mols))
         else:
             return mols
-    
+
     ids = [range(len(mols))]
 
     #split molecules along PCA axis
@@ -306,7 +316,7 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
     for i in xrange(nsplit):
         new_ids = []
         for idset in ids:
-            mPlus, mMinus, mBound = SplitSpace(idset,coords)
+            mPlus, mMinus, mBound = SplitSpace(idset, coords)
             new_ids.append(mPlus)
             new_ids.append(mMinus)
             boundaryIDs.update(mBound)
@@ -316,7 +326,7 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
         print 'PCA/Maximin: split system into regions of sizes: ',
         for idn in ids:
             print len(idn),
-        print 
+        print
 
     #to avoid boundary problems, quickly pick a subset of the things
     #on the boundaries, ensuring that picks will not cluster there
@@ -325,18 +335,19 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
 
     if verbose:
         print 'PCA/Maximin: using fast maximin to select compounds on region bound aries.'
-    b_set = FastMaximin(cb,int(nMol*len(boundaryIDs)*1.0/len(mols))) 
+    b_set = FastMaximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
     pickset = [boundaryIDs[i] for i in b_set]
     startcoords = np.array([cb[i] for i in b_set])
 
     if verbose:
         print 'PCA/Maximin: selected', len(pickset), 'out of', len(boundaryIDs),\
               'compounds on region boundaries'
-            
+
     #run maximin on each set
     print 'Scattering PCA-segmented maximin over', numNodes, 'nodes.'
-    numToPick = int(1.1*nMol/numNodes)
-    toSend = [(np.array([coords[i] for i in idn]), numToPick, startcoords) for idn in minDists]
+    numToPick = int(1.1 * nMol / numNodes)
+    toSend = [(np.array([coords[i] for i in idn]), numToPick, startcoords)
+              for idn in minDists]
 
     pl.MyTask.SetFunction(MPI_PCA_Maximin)
     picks = pl.MyTask.RunMPI(toSend)
@@ -360,6 +371,7 @@ def PCAMaximin(mols,nMol,nsplit=None,verbose=False):
     else:
         return newpicks
 
+
 #@pl.MPIScatter
 def MPI_PCA_Maximin(MPISEND):
     coords, nMol, startcoords = MPISEND
@@ -367,7 +379,7 @@ def MPI_PCA_Maximin(MPISEND):
     return picks
 
 
-def AveNNDistance(mols,getsqrt=False,std_dev=None):
+def AveNNDistance(mols, getsqrt=False, std_dev=None):
     '''
     Calculate diversity function (average nearest-neighbor distance)
     '''
@@ -376,71 +388,71 @@ def AveNNDistance(mols,getsqrt=False,std_dev=None):
     N = len(coords)
     #determine if distance matrix needs to be chunked or not
     if N > 2000:
-        chunksize = 2000*2000/N
-        nchunk = N/chunksize + 1
+        chunksize = 2000 * 2000 / N
+        nchunk = N / chunksize + 1
     else:
         chunksize = N
         nchunk = 1
 
     nndist = 0.0
     for i in xrange(nchunk):
-        if i*chunksize >= N:
+        if i * chunksize >= N:
             break
-        dists = cdist(coords, coords[i*chunksize:(i+1)*chunksize])
-        for j in xrange(min(chunksize,dists.shape[1])):
-            dists[i*chunksize+j,j]= np.inf
-        r = np.min(dists,axis=0)
+        dists = cdist(coords, coords[i * chunksize:(i + 1) * chunksize])
+        for j in xrange(min(chunksize, dists.shape[1])):
+            dists[i * chunksize + j, j] = np.inf
+        r = np.min(dists, axis=0)
         if getsqrt:
             nndist += sum(r)
         else:
-            nndist += np.dot(r,r)
+            nndist += np.dot(r, r)
 
-    return nndist/len(mols)
+    return nndist / len(mols)
 
-def ScatterAveNNDistance(mols,getsqrt=False):
+
+def ScatterAveNNDistance(mols, getsqrt=False):
     '''
     MPI version of calculate diversity function (average nearest-neighbor
     distance)
     '''
     passMols, coords = HandleMolCoords(mols)
-    
+
     N = len(coords)
     #determine if distance matrix needs to be chunked or not
     if N > 2000:
-        chunksize = (2000*2000)/N
-        nchunk = N/chunksize + 1
+        chunksize = (2000 * 2000) / N
+        nchunk = N / chunksize + 1
     else:
         chunksize = N
         nchunk = 1
-    
+
     nndist = 0.0
     nNode = pl.MyTask.size
-    toScatter = [(i*nchunk/nNode, (i+1)*nchunk/nNode, chunksize, getsqrt, coords)
-                for i in xrange(nNode)]
+    toScatter = [(i * nchunk / nNode, (i + 1) * nchunk / nNode, chunksize,
+                  getsqrt, coords) for i in xrange(nNode)]
 
     print 'Scattering average nearest neighbor distance calculation ...'
     pl.MyTask.SetFunction(MPIAveNN)
 
     nndist = sum(pl.MyTask.RunMPI(toScatter))
 
-    return nndist/len(mols)
+    return nndist / len(mols)
+
 
 #@pl.MPIScatter
 def MPIAveNN(args):
     startchunk, endchunk, chunksize, getsqrt, coords = args
     nndist = 0.0
-    for i in xrange(startchunk,endchunk):
-        if i*chunksize >= len(coords):
+    for i in xrange(startchunk, endchunk):
+        if i * chunksize >= len(coords):
             break
-        dists = cdist(coords, coords[i*chunksize:(i+1)*chunksize])
+        dists = cdist(coords, coords[i * chunksize:(i + 1) * chunksize])
         for j in xrange(min(chunksize, dists.shape[i])):
-            dists[i*chunksize+j,j] = np.inf
-        r = np.min(dists,axis=0)
+            dists[i * chunksize + j, j] = np.inf
+        r = np.min(dists, axis=0)
         if getsqrt:
             nndist += sum(r)
         else:
-            nndist += np.dot(r,r)
-    
+            nndist += np.dot(r, r)
+
     return nndist
-
-

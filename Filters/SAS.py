@@ -8,10 +8,11 @@ from rdkit.six import iteritems
 from rdkit import Chem
 import copy
 
-SARescale=False
+SARescale = False
 _fscores = None
 
-def ReadFragScores(name = 'fpscores'):
+
+def ReadFragScores(name='fpscores'):
     import gzip
     global _fscores
     #generate the full path filename
@@ -25,21 +26,23 @@ def ReadFragScores(name = 'fpscores'):
             outDict[i[j]] = float(i[0])
     _fscores = outDict
 
+
 def NumBridgeheadsAndSpiro(mol, ri=None):
     nSpiro = AllChem.CalcNumSpiroAtoms(mol)
     nBridgehead = AllChem.CalcNumBridgeheadAtoms(mol)
 
     return nBridgehead, nSpiro
 
+
 def CalcSAScore(rmol):
     if _fscores is None:
         ReadFragScores()
     mol = copy.deepcopy(rmol)
     #Chem.SanitizeMol(mol) # gives crashes!
-    
+
     #fragment score
-    fp = AllChem.GetMorganFingerprint(mol,
-                                      2) #<- 2 is the *radius* of the circular fingerprint
+    fp = AllChem.GetMorganFingerprint(
+        mol, 2)  #<- 2 is the *radius* of the circular fingerprint
     fps = fp.GetNonzeroElements()
     score1 = 0.0
     nf = 0
@@ -51,7 +54,8 @@ def CalcSAScore(rmol):
 
     #features score
     nAtoms = mol.GetNumAtoms()
-    nChiralCenters = len(Chem.FindMolChiralCenters(mol, includeUnassigned=True))
+    nChiralCenters = len(
+        Chem.FindMolChiralCenters(mol, includeUnassigned=True))
     ri = mol.GetRingInfo()
     nBridgehead, nSpiro = NumBridgeheadsAndSpiro(mol, ri)
     nMacrocycles = 0
@@ -71,7 +75,7 @@ def CalcSAScore(rmol):
     if nMacrocycles > 0:
         macrocyclePenalty = math.log10(2)
 
-    score2 = 0.0 - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty 
+    score2 = 0.0 - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty
 
     # correction for the fingerprint density
     # not in the original publication
@@ -79,7 +83,7 @@ def CalcSAScore(rmol):
     score3 = 0.0
     if nAtoms > len(fps):
         score3 = math.log(float(nAtoms) / len(fps)) * 0.5
-    
+
     sascore = score1 + score2 + score3
 
     # need to transform "raw" value into scale between 1 and 10
@@ -95,4 +99,3 @@ def CalcSAScore(rmol):
         sascore = 1.0
 
     return sascore
-

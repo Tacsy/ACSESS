@@ -3,7 +3,7 @@
 import os, sys
 sys.path.append('.')
 sys.path.append('./Filters/')
-from rdkit import Chem 
+from rdkit import Chem
 from rdkithelpers import *
 import mprms
 import importlib
@@ -12,39 +12,40 @@ import random
 
 ######################################################
 # Read run parameters from mprms.py,
-# and store them all in StoredParams.py 
+# and store them all in StoredParams.py
 ######################################################
 def Initialize():
 
     # define which type of module attributes are allowed to be changed
-    primitiveTypes=(str, float, bool, int, list, tuple, type(None))
-    normalvar = lambda var:type(var) in primitiveTypes
-    notbuiltin= lambda var:not var.startswith('_')
-    def goodvar(var, mod):return notbuiltin(var) and normalvar(getattr(mod, var))
+    primitiveTypes = (str, float, bool, int, list, tuple, type(None))
+    normalvar = lambda var: type(var) in primitiveTypes
+    notbuiltin = lambda var: not var.startswith('_')
+
+    def goodvar(var, mod):
+        return notbuiltin(var) and normalvar(getattr(mod, var))
 
     # set random seed
     if hasattr(mprms, 'rseed'):
         random.seed(mprms.rseed)
     else:
-        seed = random.randint(1,1000)
+        seed = random.randint(1, 1000)
         print "random seed:", seed
         random.seed(seed)
 
     # force mprms to have some properties
     if not hasattr(mprms, 'optimize'):
-        mprms.optimize=False
+        mprms.optimize = False
     if not hasattr(mprms, 'restart'):
-        mprms.restart=False
-    mprms.MxAtm=50
-    mprms.EdgeRatio=0.1
-    mprms.EdgeLen=10
+        mprms.restart = False
+    mprms.MxAtm = 50
+    mprms.EdgeRatio = 0.1
+    mprms.EdgeLen = 10
 
     # Decide which modules have to be imported:
-    _modules = ['mutate', 
-                'filters', 'Filters.DefaultFilters',
-                'drivers',
-                'rdkithelpers',
-                'output']
+    _modules = [
+        'mutate', 'filters', 'Filters.DefaultFilters', 'drivers',
+        'rdkithelpers', 'output'
+    ]
     if hasattr(mprms, 'metric'):
         _modules.append('distance')
     else:
@@ -56,7 +57,7 @@ def Initialize():
     for module in _modules:
         # get normal global variables of the modules
         _Mod = importlib.import_module(module)
-        modvars = [ var for var in dir(_Mod) if goodvar(var, _Mod)]
+        modvars = [var for var in dir(_Mod) if goodvar(var, _Mod)]
         for modvar in modvars:
             # check if mprms has same attr:
             if hasattr(mprms, modvar):
@@ -67,14 +68,8 @@ def Initialize():
         # initialize module if it has a Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
             getattr(_Mod, 'Init')()
-    
+
     return
-
-
-
-
-
-
 
 
 ######################################################
@@ -100,22 +95,23 @@ def StartLibAndPool(restart):
         nSeed = mprms.nSeed
     else:
         nSeed = -1
-    
+
     #####################
     #   Start library   #
     #####################
 
     #case 1: restart file ('itX.lib.gz')
     if restart:
-        for i in reversed(xrange(mprms.nGen+1)):
-            filename= "it{}.smi".format(i)
+        for i in reversed(xrange(mprms.nGen + 1)):
+            filename = "it{}.smi".format(i)
             if os.path.isfile(filename):
-                startiter=i+1
+                startiter = i + 1
                 break
-        else: raise SystemExit('RESTART but no iteration files found')
+        else:
+            raise SystemExit('RESTART but no iteration files found')
         supplier = Chem.SmilesMolSupplier(filename, sanitize=False)
         lib = [mol for mol in supplier]
-        print 'RESTARTING calculation from iteration', startiter-1,
+        print 'RESTARTING calculation from iteration', startiter - 1,
         print 'with {} molecules'.format(len(lib))
     #case 2: read from mprms.seedfile
     elif hasattr(mprms, 'seedFile'):
@@ -141,11 +137,11 @@ def StartLibAndPool(restart):
         lib = []
         lib.append(Chem.MolFromSmiles('C1CCCCC1', sanitize=False))
         lib.append(Chem.MolFromSmiles('C1=CC=CC=C1', sanitize=False))
-    
+
     #####################
     #     Start pool    #
     #####################
-    
+
     #case 1: restart file ('pool.lib.gz')
     '''
     may work together with starting library
@@ -168,22 +164,26 @@ def StartLibAndPool(restart):
         if len(pool) == 0:
             raise ValueError, "Poollib is empty."
         print "Initializing pool from mprms.poolLib"
-    
+
     #case 4: copy from library
     else:
         print 'Initializing pool from library'
         pool = [mol for mol in lib]
 
     # set isosmi
-    setisosmi = lambda mol:mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
+    setisosmi = lambda mol: mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
     map(setisosmi, pool)
     map(setisosmi, lib)
     ######### sanitize lib & pool
-    ll1,lp1= (len(lib), len(pool))
-    lib    = filter(Sane, lib)
-    pool   = filter(Sane, pool)
-    ll2,lp2= (len(lib), len(pool))
-    if not ll1==ll2:print "removed {:d} unsane molecules from lib  | libsize : {:d}".format(ll1-ll2, ll2)
-    if not lp1==lp2:print "removed {:d} unsane molecules from pool | poolsize: {:d}".format(lp1-lp2, lp2)
+    ll1, lp1 = (len(lib), len(pool))
+    lib = filter(Sane, lib)
+    pool = filter(Sane, pool)
+    ll2, lp2 = (len(lib), len(pool))
+    if not ll1 == ll2:
+        print "removed {:d} unsane molecules from lib  | libsize : {:d}".format(
+            ll1 - ll2, ll2)
+    if not lp1 == lp2:
+        print "removed {:d} unsane molecules from pool | poolsize: {:d}".format(
+            lp1 - lp2, lp2)
 
     return startiter, lib, pool
