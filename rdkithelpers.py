@@ -13,6 +13,7 @@ bondorder = {
     3: Chem.BondType.TRIPLE
 }
 aromatic = False
+verbose  = True
 
 
 ############ FROM CANONICAL #############################
@@ -34,7 +35,8 @@ def Finalize(mol, CanonicalTautomer=False, aromatic=aromatic):
     try:
         Sanitize(mol, aromatic)
     except Exception as e:
-        print "Error in Finalize with", Chem.MolToSmiles(mol, False), e,
+        print "Error in Finalize with", Chem.MolToSmiles(mol, False), 
+        if verbose: print e,
         if debug:
             for item in traceback.extract_stack():
                 print item

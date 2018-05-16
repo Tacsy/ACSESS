@@ -4,6 +4,7 @@ import os, sys
 sys.path.append('.')
 sys.path.append('./Filters/')
 from rdkit import Chem
+from rdkit import RDLogger
 from rdkithelpers import *
 import mprms
 import importlib
@@ -24,13 +25,21 @@ def Initialize():
     def goodvar(var, mod):
         return notbuiltin(var) and normalvar(getattr(mod, var))
 
-    # set random seed
+    # set&log random seed
     if hasattr(mprms, 'rseed'):
         random.seed(mprms.rseed)
     else:
-        seed = random.randint(1, 1000)
-        print "random seed:", seed
-        random.seed(seed)
+        mprms.rseed = random.randint(1, 1000)
+        random.seed(mprms.rseed)
+    print "random seed:", mprms.rseed
+
+    # Set RDKit verbosity
+    if hasattr(mprms, 'verbose') and not mprms.verbose:
+        lg = RDLogger.logger()
+        lg.setLevel(RDLogger.CRITICAL)
+        print "RDKit logging level -> CRITICAL"
+    else:
+        setattr(mprms, 'verbose', True)
 
     # force mprms to have some properties
     if not hasattr(mprms, 'optimize'):

@@ -50,12 +50,8 @@ def calculate(rdmols, run, QH2=False, gen=0):
     # CINDES.utils.molecule.SmiMolecule objects
     mols = [SmiMolecule(Chem.MolToSmiles(rdmol, True)) for rdmol in rdmols]
     for mol, rdmol in zip(mols, rdmols):
-        #from Canonical import Finalize
-        #Finalize(rdmol)
-        mol.xyz = getXYZ(rdmol)
-        mol.rdmol = rdmol
-        #print "xyz:", mol.xyz
-        mol.xyz2 = mol.xyz
+        mol.xyz= getXYZ(rdmol)
+        mol.rdmol=rdmol
 
     # check if already in database
     mols_todo, mols_nodo = check_in_table(

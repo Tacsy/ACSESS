@@ -367,8 +367,6 @@ def Compute3DCoords(mol, string=False, ff='MMFF'):
         raise NoGeom
 
     molStr = Chem.MolToMolBlock(molAddH)
-    print molStr
-    if string: return molStr
 
     #parse mol string file into list
     molCoords = []
