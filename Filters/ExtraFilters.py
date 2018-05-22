@@ -69,7 +69,6 @@ ExtraFilters['quinoid'] = NewFilter('notquinoid')
 
 
 def findQuinoid(mol, strict=False):
-    #Chem.Kekulize(mol, True)
 
     # quionoid matches
     # the 12 match urges for at least one extra conjugated bond that is not terminal
@@ -94,14 +93,13 @@ def findQuinoid(mol, strict=False):
         matches = set()
         for qinds_p, ss in sss:
             for match in mol.GetSubstructMatches(ss):
-                for idx, ma in zip(match, GetIAtoms(match, mol)):
-                    if ma.GetAtomicNum() == 8:
-                        matches.add(idx)
+                for ind in qinds_p:
+                    matches.add(match[ind])
         if len(matches) < 2:
             #print "no match:", Chem.MolToSmiles(mol)
             return True
-        elif len(matches) > 3:
-            #print "multiple matches:", Chem.MolToSmiles(mol)
+        elif len(matches) > 2:
+            print "multiple matches:", Chem.MolToSmiles(mol)
             return True
         mol.SetProp('quinoid_indices', " ".join(map(str, list(matches))))
     for ss in ssss:
@@ -149,7 +147,7 @@ ExtraFilters['radical'] = NewFilter('not a radical')
 
 def FindRadical(mol):
     smi_before = Chem.MolToSmiles(mol)
-    print "smi_before:", smi_before
+    #print "smi_before:", smi_before
 
     # 1. Test for radical centers.
     nradcenters = 0
@@ -160,14 +158,17 @@ def FindRadical(mol):
             totalbondorder = atom.GetTotalValence()
             atomcharge = atom.GetFormalCharge()
 
+        # test if not carbene, i.e. carbon with only two bonds and a free electron pair
+        if num==6 and totalbondorder==2: return 'carbene in molecule'
+
         # Test if single radical centers present: also Si/P/S included
         possible_radicals = [(6, 3), (7, 2), (8, 1), (14, 3), (15, 2), (16, 1)]
         for RadAtNum, RadTotalBondorder in possible_radicals:
             if num == RadAtNum and atomcharge == 0:
-                print RadAtNum, RadTotalBondorder, num, totalbondorder
+                #print RadAtNum, RadTotalBondorder, num, totalbondorder
                 if totalbondorder == RadTotalBondorder:
                     nradcenters += 1
-    print "nradcenters:", nradcenters
+    #print "nradcenters:", nradcenters, 
 
     # 2. Test for specific stable radical patterns
     rphenoxyl1a = Chem.MolFromSmarts('a1aaaaa1~[C,c]~[O,o;v1]')
@@ -208,6 +209,8 @@ def FindRadical(mol):
         return "not a valid radical"
     elif nradcenters == 0 and nmatch > 0:
         return "this shouldn't be possible"
+    elif nradcenters > 1 and nmatch > 0:
+        return "too many radical centers"
     else:
         return False
 
