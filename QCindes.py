@@ -35,6 +35,12 @@ def Init():
 
 
 def calculate(rdmols, run, QH2=False, gen=0):
+
+    # -3 
+    for mol in rdmols:
+        for atom in mol.GetAtoms():
+            print atom.GetAtomicNum(),
+
     # -2 prepare optionally for logging to file
     global table
     print "len(table):{}".format(len(table)),

@@ -393,3 +393,11 @@ def GetMurckoScaffold(mol):
 
     #return scaffold rdkit.mol object
     return scaffold
+
+if __name__=="__main__":
+    import sys
+    smiles = sys.argv[1]
+    from rdkit import Chem
+    mol = Chem.MolFromSmiles(smiles)
+    print xyzfromrdmol(mol)
+
