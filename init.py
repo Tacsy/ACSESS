@@ -52,8 +52,13 @@ def Initialize():
 
     # Decide which modules have to be imported:
     _modules = [
-        'mutate', 'filters', 'Filters.DefaultFilters', 'drivers',
-        'rdkithelpers', 'output'
+        'mutate',
+        'filters',
+        'Filters.DefaultFilters',
+        'Filters.ExtraFilters',
+        'drivers',
+        'rdkithelpers',
+        'output'
     ]
     if hasattr(mprms, 'metric'):
         _modules.append('distance')

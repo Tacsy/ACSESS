@@ -115,18 +115,19 @@ def NotPlanarBoyes(mol):
 
 DefaultFilters['Non-planar graph (Boyes)'].SetFilterRoutine(NotPlanarBoyes)
 DefaultFilters['Non-planar graph (Boyes)'].SetFixRoutine(CutRings)
-
 DefaultFilters['Too many rings'] = NewFilter('Too many rings')
-
 
 def TooManyRings(mol):
     # Ring features
     if mol.GetNumAtoms() > maxRings:
-        nrings, sa, sb = SSSR(mol)
-        if sum(nrings) > maxRings:
-            return 'Too Many Rings'
-    return False
+        #nrings, sa, sb = SSSR(mol)
+        #if sum(nrings) > maxRings:
+        #    return 'Too Many Rings'
+        nrings = mol.GetRingInfo().NumRings()
+        if nrings > maxRings:
+            return 'Too Many Rings: {}'.format(nrings)
 
+    return False
 
 DefaultFilters['Too many rings'].SetFilterRoutine(TooManyRings)
 DefaultFilters['Too many rings'].SetFixRoutine(CutRings)
@@ -177,44 +178,30 @@ LookUpFilter = NewFilter('Compound not in lookup table')
 def lu(mol):
     smi = Chem.MolToSmiles(mol, True)
     return (smi not in lookUpTable)
-
-
 LookUpFilter.SetFilterRoutine(lu)
 
 LipinskiFilter = NewFilter('Lipinski violation')
-
-
 def lp_routine(mol):
     return LipinskiRuleOf5(mol) > 1
-
 
 def LipinskiRuleOf5(mol):
     PropCalc(mol)
     ofs.flush()
     return mol.GetData('Lipinski violations')
-
-
 LipinskiFilter.SetFilterRoutine(lp_routine)
 
 RuleOf10Filter = NewFilter('Rule of 10')
-
-
 def r10f_routine(mol):
     return RuleOf10(mol) > 10
-
 
 def RuleOf10(mol):
     OEPerceiveChiral(mol)
     ringcount, na, nb = SSSR(mol)
     nStereos = OECount(mol, OEIsChiralAtom()) + OECount(mol, OEIsChiralBond())
     return sum(ringcount) + nStereos
-
-
 RuleOf10Filter.SetFilterRoutine(r10f_routine)
 
 SAScoreFilter = NewFilter("SA-Score synthetic accessibility")
-
-
 def sascore_filt(mol):
     import os
     import SAS as sa
@@ -223,6 +210,4 @@ def sascore_filt(mol):
         return 'SAScore: ' + str(score)
     else:
         return False
-
-
 SAScoreFilter.SetFilterRoutine(sascore_filt)

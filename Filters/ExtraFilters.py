@@ -4,12 +4,13 @@ from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
 from rdkithelpers import *
 from copy import deepcopy
-
 ExtraFilters = dict()
+
+# constants changeable by user input
+maxSphericity = 0.3
 
 # EXTRA AROMATICITY FILTER
 ExtraFilters['aromatic'] = NewFilter('aromatic')
-
 
 def HasAromaticity(oldmol):
     mol = deepcopy(oldmol)
@@ -25,9 +26,30 @@ def HasAromaticity(oldmol):
         return False
     return 'not aromatic'
 
-
 ExtraFilters['aromatic'].SetFilterRoutine(HasAromaticity)
-#########################
+
+# Sphericity filters. Other Descriptor 3D filters could be added
+# preferably to this particular function to avoid repeatedly
+# calculating 3D coordinates
+ExtraFilters['sphericity'] = NewFilter('sphericity')
+def Sphericity(mol):
+    from rdkit.Chem import AllChem
+    from rdkit.Chem import Descriptors3D
+    m = Chem.AddHs(mol)
+    try: # this function can raise a ValueError for unkekulizable molecules
+        AllChem.EmbedMolecule(m)
+    except ValueError:
+        return False
+    try:
+        AllChem.UFFOptimizeMolecule(m)
+    except ValueError:
+        print "ValueError with UFFOptimize, mol:", Chem.MolToSmiles(m), Chem.MolToSmiles(mol)
+        return False
+    sphericity = Descriptors3D.SpherocityIndex(m)
+    if sphericity > maxSphericity:
+        return 'maxSphericity {}'.format(sphericity)
+    return False
+ExtraFilters['sphericity'].SetFilterRoutine(Sphericity)
 
 ############################################################
 #       Functions from QiuFilter.py
@@ -64,6 +86,22 @@ def CheckBondOrder(mol):
 
 ExtraFilters['qiu1'].SetFilterRoutine(CheckRingSize)
 ExtraFilters['qiu2'].SetFilterRoutine(CheckBondOrder)
+
+
+
+
+
+
+
+
+
+##################################################
+#  HERE Some specific filters from Jos Teunissen #
+#  These will be removed in later versions       #
+##################################################
+
+
+
 
 ExtraFilters['quinoid'] = NewFilter('notquinoid')
 
@@ -235,6 +273,5 @@ def FindRadical_old(mol):
         return True
     else:
         return True
-
 
 ExtraFilters['radical'].SetFilterRoutine(FindRadical)
