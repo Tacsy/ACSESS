@@ -151,8 +151,10 @@ def CutBiggestRings(mol):
     ringatoms, ringbonds = SSSR_GetRings(mol)
     bondids = {bond.GetIdx(): bond for bond in mol.GetBonds()}
     changed = False
-    while sum(
-            mol.GetData('ringcounts')[maxRingSize - 2:]) > RingSizeExceptions:
+    while True:
+        nrings = map(int, mol.GetProp('ringcounts').split())
+        if not sum(nrings[maxRingSize - 2:]) > RingSizeExceptions:
+            break
         toobig = set()
         smallenough = set()
         for ring in ringbonds:
@@ -161,10 +163,13 @@ def CutBiggestRings(mol):
         canremove = toobig - smallenough
         removelist = [
             bondids[id] for id in canremove
-            if not bondids[id].HasData('mygroup')
+            if not bondids[id].HasProp('mygroup')
         ]
         if len(canremove) == 0: raise MutateFail()
-        else: mol.DeleteBond(random.choice(removelist))
+        else:
+            delbond = random.choice(removelist)
+            i, j = (delbond.GetBeginAtomIdx(), delbond.GetEndAtomIdx())
+            mol.RemoveBond(i, j)
         changed = True
         ringatoms, ringbonds = SSSR_GetRings(mol, True)
     return changed
@@ -187,7 +192,7 @@ def lp_routine(mol):
 def LipinskiRuleOf5(mol):
     PropCalc(mol)
     ofs.flush()
-    return mol.GetData('Lipinski violations')
+    return mol.GetProp('Lipinski violations')
 LipinskiFilter.SetFilterRoutine(lp_routine)
 
 RuleOf10Filter = NewFilter('Rule of 10')

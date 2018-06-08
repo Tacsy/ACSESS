@@ -556,6 +556,7 @@ def RemoveAtom(mol, atom):
 
 
 def AddArRing(mol, bond):
+    # if double bond
     if bond.GetBondType() == bondorder[2] and all(
             atom.GetImplicitValence()
             for atom in (bond.GetBeginAtom(), bond.GetEndAtom())):

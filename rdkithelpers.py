@@ -337,8 +337,13 @@ def SSSR_GetRings(mol, force=False):
                len(AssignedBonds)==nringbond:
                 break
             atomids = set(match)
-            bondids = set(
-                [bond.GetIdx() for bond in GetAtomIBonds(mol, match)])
+            try:
+                bondids = set(
+                    [bond.GetIdx() for bond in GetAtomIBonds(match, mol)])
+            except AttributeError:
+                print "mol:", mol
+                print "matches:", matches
+                raise
 
             #Count this ring only if some of its atoms or bonds
             #have not already been assigned to a smaller ring
