@@ -146,7 +146,7 @@ def GetXAtoms(mol, num=6, notprop=None):
     return filter(requirement, mol.GetAtoms())
 
 
-def GetFreeBonds(mol, order=None, notprop=None):
+def GetFreeBonds(mol, order=None, notprop=None, sides=False):
     ''' This function is used by aromatic ring addition. It returns the bonds with specified order
     and on both bond.atoms at least one hydrogen. '''
     # 1. select bonds with required bondorder
@@ -163,6 +163,11 @@ def GetFreeBonds(mol, order=None, notprop=None):
         bonds = filter(lambda bond: not bond.HasProp(notprop), withHbonds)
     else:
         bonds = withHbonds
+    # 4. test if single bond has two double bonds connected:
+    if order==1 and sides:
+        hasdoubleside    = lambda atom:2.0 in map(lambda x:x.GetBondTypeAsDouble(), atom.GetBonds())
+        hastwodoublesides= lambda bond: all( map( hasdoubleside, ( bond.GetBeginAtom(), bond.GetEndAtom() ) ) )
+        bonds = filter( hastwodoublesides, bonds)
     return bonds
 
 

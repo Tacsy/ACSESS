@@ -20,6 +20,7 @@ p_AddFreq = 0.5  #Actual probability: (.8*.7)*.5=.28
 p_DelFreq = 0.8  #Actual probability: .224
 p_RingRemove = 0.2  #actual probability=.8*.3=.24
 p_AddAroRing = 0.5  #actual probability is rather low sing free double bonds aren't prevalent
+p_AddFusionRing = 0.5  #actual probability is rather low sing free double bonds aren't prevalent
 MutateStereo = False
 StereoFlip = 0.2
 
@@ -346,12 +347,13 @@ def SingleMutate(candidateraw):
     if random.random() < p_BondFlip and len(bonds) > 0:
         if debug: print "1",
         stats['nFlip'] += 1
+        change = True
         try:
             Chem.Kekulize(candidate, True)
             bonds = list(GetBonds(candidate, notprop='group'))
             mutate.FlipBond(candidate, random.choice(bonds))
             Finalize(candidate, aromatic=False)
-            return candidate
+            #return candidate
         except MutateFail:
             stats['nFlipFail'] += 1
 
@@ -360,13 +362,14 @@ def SingleMutate(candidateraw):
     if random.random() < p_AtomFlip and len(atoms) > 0:
         if debug: print "2",
         stats['nAtomType'] += 1
+        change = True
         try:
             mutate.SwitchAtom(candidate, random.choice(atoms))
             try:
                 Finalize(candidate, aromatic=False)
             except:
                 raise MutateFail
-            return candidate
+            #return candidate
         except MutateFail:
             stats['nAtomTypeFail'] += 1
 
@@ -444,12 +447,14 @@ def SingleMutate(candidateraw):
         except MutateFail:
             stats['nRemoveFail'] += 1
 
-    # 7. Add aromatic ring
+    # 7. Add aromatic ring to a bond
     if random.random() < p_AddAroRing:
+        freesinglebonds = GetFreeBonds(candidate, order=1, sides=True)
+        print "freesinglebonds:", freesinglebonds
         freedoublebonds = GetFreeBonds(candidate, order=2, notprop='group')
         triplebonds = filter(lambda bond: bond.GetBondType() == bondorder[3],
                              candidate.GetBonds())
-        correctbonds = freedoublebonds + triplebonds
+        correctbonds = freedoublebonds + triplebonds + freesinglebonds
         if len(correctbonds) > 1:
             print "n freedoublebonds:", len(correctbonds)
             if debug: print "7",
@@ -468,6 +473,23 @@ def SingleMutate(candidateraw):
                 return candidate
             except MutateFail:
                 stats['nAddArRingFail'] += 1
+
+    # 8. Add aromatic ring to two rings
+    if random.random() < p_AddFusionRing:
+        try:
+            p = Chem.MolFromSmarts('[h]@&=*(@*)@[h]')
+            matches = candidate.GetSubstructMatches(p)
+        except RuntimeError:
+            stats['nAddFusionRingFail'] += 1
+        else:
+            if matches:
+                stats['nAddFusionRing'] += 1
+                match = random.choice(matches)
+                try:
+                    candidate = mutate.AddFusionRing(candidate, match)
+                    return candidate
+                except MutateFail:
+                    stats['nAddFusionRingFail'] += 1
 
     if not change:
         stats['nNoMutation'] += 1

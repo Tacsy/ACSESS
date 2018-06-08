@@ -557,9 +557,7 @@ def RemoveAtom(mol, atom):
 
 def AddArRing(mol, bond):
     # if double bond
-    if bond.GetBondType() == bondorder[2] and all(
-            atom.GetImplicitValence()
-            for atom in (bond.GetBeginAtom(), bond.GetEndAtom())):
+    if all( atom.GetImplicitValence() for atom in (bond.GetBeginAtom(), bond.GetEndAtom())):
         pass
     elif bond.GetBondType() == bondorder[3]:
         bond.SetBondType(bondorder[2])
@@ -586,3 +584,28 @@ def AddArRing(mol, bond):
         raise MutateFail
     print "Finished AddArRing!", Chem.MolToSmiles(mol)
     return mol
+
+def AddFusionRing(mol, match):
+
+    def AwithLabel(label):
+        return filter(lambda atom: atom.HasProp(label),
+                      mol.GetAtoms())[0].GetIdx()
+
+    propene = Chem.MolFromSmiles('C=CC')
+    propene.GetAtomWithIdx(0).SetBoolProp('propane1', True)
+    propene.GetAtomWithIdx(2).SetBoolProp('propane2', True)
+    mol.GetAtomWithIdx(match[3]).SetBoolProp('ah1', True)
+    mol.GetAtomWithIdx(match[0]).SetBoolProp('ah2', True)
+    mol = Chem.RWMol(Chem.CombineMols(mol, propene))
+    try:
+        mol.AddBond(AwithLabel('propane1'), AwithLabel('ah1'), bondorder[1])
+        mol.AddBond(AwithLabel('propane2'), AwithLabel('ah2'), bondorder[1])
+    except RuntimeError:
+        raise MutateFail
+    print "Finished AddFusionRing!", Chem.MolToSmiles(mol)
+    return mol
+
+
+
+
+
