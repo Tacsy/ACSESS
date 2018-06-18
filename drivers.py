@@ -353,7 +353,6 @@ def SingleMutate(candidateraw):
             bonds = list(GetBonds(candidate, notprop='group'))
             mutate.FlipBond(candidate, random.choice(bonds))
             Finalize(candidate, aromatic=False)
-            #return candidate
         except MutateFail:
             stats['nFlipFail'] += 1
 
@@ -369,7 +368,6 @@ def SingleMutate(candidateraw):
                 Finalize(candidate, aromatic=False)
             except:
                 raise MutateFail
-            #return candidate
         except MutateFail:
             stats['nAtomTypeFail'] += 1
 

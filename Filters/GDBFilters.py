@@ -24,19 +24,17 @@ AllFilters["Bredt's rule"] = NewFilter("Bredt's rule")
 BredtViolation = NewPatternFilter('bredt violation')
 BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
 BredtViolation.SetExceptions(
-    [Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])  #,
-
+    [Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])
 #    Chem.MolFromSmarts('[R]@;=,:[R&x3]@[R&x3]')])
 
 
 def BredtsRule(mol):
     for match in BredtViolation.FilterWithExceptions(mol):
         macrocycle = False
-        #for atom in match.GetAtoms():
         atoms = filter(lambda x: x.GetIdx() in match, mol.GetAtoms())
         for atom in atoms:
             SRZ = GetSmallestRingSize(atom)
-            if SRZ >= 5:
+            if SRZ >= 8:
                 macrocycle = True
                 break
         if not macrocycle: return 'Bredt violation'

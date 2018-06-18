@@ -19,7 +19,8 @@ def Initialize():
 
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
-    normalvar = lambda var: type(var) in primitiveTypes
+    isfilter   = lambda var: hasattr(var, '__name__') and var.__name__=='myfilter'
+    normalvar =  lambda var: type(var) in primitiveTypes or isfilter(var)
     notbuiltin = lambda var: not var.startswith('_')
 
     def goodvar(var, mod):
@@ -82,6 +83,7 @@ def Initialize():
         # initialize module if it has a Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
             getattr(_Mod, 'Init')()
+
 
     return
 

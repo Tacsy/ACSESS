@@ -5,10 +5,25 @@ from rdkit import Chem
 from rdkithelpers import *
 from copy import deepcopy
 ExtraFilters = dict()
+extraSmarts  = []
+extraSmartsAromatic = False
 
-# constants changeable by user input
-maxSphericity = 0.3
+# -----------------
+ExtraFilters['ExtraSmarts'] = NewFilter('ExtraSmarts')
+def HasSmarts(mol):
+    if not extraSmartsAromatic:
+        try:
+            Chem.Kekulize(mol, True)
+        except ValueError as e:
+            return 'unkekulizable'
+    smarts = [ Chem.MolFromSmarts(p) for p in extraSmarts ]
+    answer = any( mol.HasSubstructMatch(smart) for smart in smarts )
+    Chem.SetAromaticity(mol)
+    if answer: return False
+    else: return 'no smarts match'
+ExtraFilters['ExtraSmarts'].SetFilterRoutine(HasSmarts)
 
+# -----------------
 # EXTRA AROMATICITY FILTER
 ExtraFilters['aromatic'] = NewFilter('aromatic')
 
@@ -28,9 +43,11 @@ def HasAromaticity(oldmol):
 
 ExtraFilters['aromatic'].SetFilterRoutine(HasAromaticity)
 
+# -----------------
 # Sphericity filters. Other Descriptor 3D filters could be added
 # preferably to this particular function to avoid repeatedly
 # calculating 3D coordinates
+maxSphericity = 0.3
 ExtraFilters['sphericity'] = NewFilter('sphericity')
 def Sphericity(mol):
     from rdkit.Chem import AllChem
@@ -109,6 +126,10 @@ ExtraFilters['quinoid'] = NewFilter('notquinoid')
 def findQuinoid(mol, strict=False):
 
     # quionoid matches
+    try:
+        Chem.Kekulize(mol, True)
+    except ValueError:
+        return 'unkekulizeable'
     # the 12 match urges for at least one extra conjugated bond that is not terminal
     ss12 = Chem.MolFromSmarts('[O,o]:,=[#6]~[#6](:,=[O,o])~[#6]=,:*~*')
     ss14 = Chem.MolFromSmarts(
@@ -170,7 +191,8 @@ def findQuinoid(mol, strict=False):
         requirement = requirement and n_co <= nmax_co
 
     # since when okay has to return False:
-    if aromatic: Chem.SetAromaticity(mol)
+    #if aromatic: Chem.SetAromaticity(mol)
+    Chem.SetAromaticity(mol)
     return not requirement
 
 

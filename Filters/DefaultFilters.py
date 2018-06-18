@@ -25,18 +25,6 @@ SAScore = 0.0
 
 ############ FILTERS
 
-# BREDT VIOLATIONS
-#AllFilters["Bredt's rule"]=NewFilter("Bredt's rule")
-#BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
-#BredtViolation=NewPatternFilter('bredt violation')
-#BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
-#BredtViolation.SetExceptions([ Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])#,
-#                           #    Chem.MolFromSmarts('[R]@;=,:[R&x3]@[R&x3]')])
-#AllFilters["Bredt's rule"].SetFilterRoutine(BredtsRule)
-#AllFilters["Bredt's rule"].SetFixRoutine(FixBredt)
-
-#######################################
-# Filters available to all flavors    #
 DefaultFilters['Too big'] = NewFilter('Too big')
 
 
