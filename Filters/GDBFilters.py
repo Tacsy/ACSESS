@@ -21,14 +21,14 @@ def GeomFilter(mol):
 # BREDT VIOLATIONS
 AllFilters["Bredt's rule"] = NewFilter("Bredt's rule")
 #BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
-BredtViolation = NewPatternFilter('bredt violation')
-BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
-BredtViolation.SetExceptions(
-    [Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])
+#BredtViolation = NewPatternFilter('bredt violation')
+#BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
+#BredtViolation.SetExceptions(
+#    [Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])
 #    Chem.MolFromSmarts('[R]@;=,:[R&x3]@[R&x3]')])
 
 
-def BredtsRule(mol):
+def OldBredtsRule(mol):
     for match in BredtViolation.FilterWithExceptions(mol):
         macrocycle = False
         atoms = filter(lambda x: x.GetIdx() in match, mol.GetAtoms())
@@ -40,8 +40,28 @@ def BredtsRule(mol):
         if not macrocycle: return 'Bredt violation'
     return False
 
+def NewBredt(mol):
+    doubletworings=Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]')
+    if mol.HasSubstructMatch(doubletworings):
+        # 1. test if match exceptions
+        ex1 = Chem.MolFromSmarts('[R]@[R&x3](@[R])@[R&x3,R&x4]')
+        ex2 = Chem.MolFromSmarts('[R]@[R&x3](@[R])@[R](@[R])@[R]')
+        if any(mol.HasSubstructMatch(ex) for ex in [ex1, ex2]):
+            return False
+        # 2. test if macrocycle
+        for match in mol.GetSubstructMatches(doubletworings):
+            macrocycle = False
+            atoms = filter(lambda atom:atom.GetIdx() in match, mol.GetAtoms())
+            for atom in atoms:
+                SRZ = GetSmallestRingSize(atom)
+                if SRZ >= 8:
+                    macrocycle = True
+                    break
+            if not macrocycle: return 'Bredt violation'
+    return False
 
-AllFilters["Bredt's rule"].SetFilterRoutine(BredtsRule)
+
+AllFilters["Bredt's rule"].SetFilterRoutine(NewBredt)
 
 
 def FixBredt(mol):
@@ -64,7 +84,7 @@ def FixBredt(mol):
     return changed
 
 
-AllFilters["Bredt's rule"].SetFixRoutine(FixBredt)
+#AllFilters["Bredt's rule"].SetFixRoutine(FixBredt)
 
 ####################################################################
 # HETEROATOM RATIOS

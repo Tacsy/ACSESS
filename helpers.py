@@ -277,11 +277,15 @@ def Normalize(vec):
     return vec / n
 
 
-def DumpMols(lib, gen=None):
-    if gen is None:
-        filename = 'pool.smi'
+def DumpMols(lib, gen=None, filename=None):
+    if filename: # force filename to have .smi extension
+        if not filename[-4:]=='.smi':
+            filename = '{}.smi'.format(filename)
     else:
-        filename = 'it{}.smi'.format(gen)
+        if gen is None:
+            filename = 'pool.smi'
+        else:
+            filename = 'it{}.smi'.format(gen)
     w = Chem.SmilesWriter(filename)
     for mol in lib:
         w.write(mol)

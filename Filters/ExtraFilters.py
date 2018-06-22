@@ -29,16 +29,15 @@ ExtraFilters['aromatic'] = NewFilter('aromatic')
 
 def HasAromaticity(oldmol):
     mol = deepcopy(oldmol)
-    try:
-        Chem.SetAromaticity(mol)
-    except Exception as e:
-        print "in HasAromaticity:", Chem.MolToSmiles(mol), e
-        return e
-    a = Chem.MolFromSmarts("C1=C-C=C-C=C1")
-    b = Chem.MolFromSmarts("c1ccccc1")
-    #if mol.HasSubstructMatch(a) or mol.HasSubstructMatch(b):
-    if len(mol.GetAromaticAtoms()) or mol.HasSubstructMatch(a):
+    #a1 = Chem.MolFromSmarts("C1=C-C=C-C=C1")
+    a2 = Chem.MolFromSmarts("C1~*-cc-*~*1")
+    a3 = Chem.MolFromSmarts("O=C1-*(@[R]):,=*(@[R])-C(-*:,=-*1)=O")
+    a4 = Chem.MolFromSmarts("[R]=*1-*=*-*(=*)-*=,:*1")
+    A = [a2, a3, a4]
+    if any(mol.HasSubstructMatch(a) for a in A):
         return False
+    #if len(mol.GetAromaticAtoms()) or mol.HasSubstructMatch(a):
+    #    return False
     return 'not aromatic'
 
 ExtraFilters['aromatic'].SetFilterRoutine(HasAromaticity)
