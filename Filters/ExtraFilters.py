@@ -4,6 +4,7 @@ from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
 from rdkithelpers import *
 from copy import deepcopy
+from itertools import combinations
 ExtraFilters = dict()
 extraSmarts  = []
 extraSmartsAromatic = False
@@ -22,6 +23,19 @@ def HasSmarts(mol):
     if answer: return False
     else: return 'no smarts match'
 ExtraFilters['ExtraSmarts'].SetFilterRoutine(HasSmarts)
+
+# -------------------
+ExtraFilters['ringshare3'] = NewFilter('ringshare3')
+def ringshare3(mol):
+    rings = mol.GetRingInfo().AtomRings()
+    combis= combinations(rings, 2)
+    lintersect = lambda combi: len(set(combi[0]) & set(combi[1]))
+    intersects = map(lintersect, combis)
+    if max(intersects)>2:
+        return 'two rings share 3 atoms'
+    else:
+        return False
+ExtraFilters['ringshare3'].SetFilterRoutine(ringshare3)
 
 # -----------------
 # EXTRA AROMATICITY FILTER

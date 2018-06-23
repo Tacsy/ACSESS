@@ -108,13 +108,9 @@ DefaultFilters['Too many rings'] = NewFilter('Too many rings')
 def TooManyRings(mol):
     # Ring features
     if mol.GetNumAtoms() > maxRings:
-        #nrings, sa, sb = SSSR(mol)
-        #if sum(nrings) > maxRings:
-        #    return 'Too Many Rings'
         nrings = mol.GetRingInfo().NumRings()
         if nrings > maxRings:
             return 'Too Many Rings: {}'.format(nrings)
-
     return False
 
 DefaultFilters['Too many rings'].SetFilterRoutine(TooManyRings)
