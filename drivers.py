@@ -448,13 +448,13 @@ def SingleMutate(candidateraw):
     # 7. Add aromatic ring to a bond
     if random.random() < p_AddAroRing:
         freesinglebonds = GetFreeBonds(candidate, order=1, sides=True)
-        print "freesinglebonds:", freesinglebonds
+        #print "freesinglebonds:", freesinglebonds
         freedoublebonds = GetFreeBonds(candidate, order=2, notprop='group')
         triplebonds = filter(lambda bond: bond.GetBondType() == bondorder[3],
                              candidate.GetBonds())
         correctbonds = freedoublebonds + triplebonds + freesinglebonds
         if len(correctbonds) > 1:
-            print "n freedoublebonds:", len(correctbonds)
+            #print "n freedoublebonds:", len(correctbonds)
             if debug: print "7",
             stats['nAddArRing'] += 1
             Chem.Kekulize(candidate, True)

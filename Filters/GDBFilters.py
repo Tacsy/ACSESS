@@ -20,6 +20,7 @@ def GeomFilter(mol):
 
 # BREDT VIOLATIONS
 AllFilters["Bredt's rule"] = NewFilter("Bredt's rule")
+minMacroCycBredt=5
 #BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
 #BredtViolation = NewPatternFilter('bredt violation')
 #BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
@@ -34,7 +35,7 @@ def OldBredtsRule(mol):
         atoms = filter(lambda x: x.GetIdx() in match, mol.GetAtoms())
         for atom in atoms:
             SRZ = GetSmallestRingSize(atom)
-            if SRZ >= 8:
+            if SRZ >= minMacroCycBredt:
                 macrocycle = True
                 break
         if not macrocycle: return 'Bredt violation'
@@ -54,7 +55,7 @@ def NewBredt(mol):
             atoms = filter(lambda atom:atom.GetIdx() in match, mol.GetAtoms())
             for atom in atoms:
                 SRZ = GetSmallestRingSize(atom)
-                if SRZ >= 8:
+                if SRZ >= minMacroCycBredt:
                     macrocycle = True
                     break
             if not macrocycle: return 'Bredt violation'

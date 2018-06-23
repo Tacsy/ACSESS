@@ -373,6 +373,10 @@ def AddBond(mol):
         atom1 = random.choice(atoms)
         atom2 = random.choice(atoms)
         if atom1 == atom2: continue
+        # new rather strict criteria;
+        if atom1.IsInRing() and atom2.IsInRing():
+            #print "continue because both atoms in ring"
+            continue
         # Only make rings of size 5-7
         if not (5 <= len(
                 Chem.GetShortestPath(mol, atom1.GetIdx(), atom2.GetIdx())) <=
@@ -565,7 +569,7 @@ def AddArRing(mol, bond):
         print "wrong kind of atom given"
         raise MutateFail
 
-    print "in AddArRing!", Chem.MolToSmiles(mol)
+    #print "in AddArRing!", Chem.MolToSmiles(mol)
 
     def AwithLabel(label):
         return filter(lambda atom: atom.HasProp(label),
@@ -582,7 +586,7 @@ def AddArRing(mol, bond):
         mol.AddBond(AwithLabel('buta2'), AwithLabel('ah2'), bondorder[1])
     except RuntimeError:
         raise MutateFail
-    print "Finished AddArRing!", Chem.MolToSmiles(mol)
+    #print "Finished AddArRing!", Chem.MolToSmiles(mol)
     return mol
 
 def AddFusionRing(mol, match):
@@ -602,7 +606,7 @@ def AddFusionRing(mol, match):
         mol.AddBond(AwithLabel('propane2'), AwithLabel('ah2'), bondorder[1])
     except RuntimeError:
         raise MutateFail
-    print "Finished AddFusionRing!", Chem.MolToSmiles(mol)
+    #print "Finished AddFusionRing!", Chem.MolToSmiles(mol)
     return mol
 
 

@@ -57,6 +57,7 @@ def Initialize():
         'filters',
         'Filters.DefaultFilters',
         'Filters.ExtraFilters',
+        'Filters.GDBFilters',
         'drivers',
         'rdkithelpers',
         'output'
@@ -76,9 +77,13 @@ def Initialize():
         for modvar in modvars:
             # check if mprms has same attr:
             if hasattr(mprms, modvar):
+                attrvalue = getattr(mprms, modvar)
                 #than change it:
-                print "set attr: {}.{}".format(module, modvar)
-                setattr(_Mod, modvar, getattr(mprms, modvar))
+                setattr(_Mod, modvar, attrvalue)
+                if len(repr(attrvalue))>40:
+                    print "set attr: {:_>22}.{:19}".format(module, modvar)
+                else:
+                    print "set attr: {:_>22}.{:_<18} : {}".format(module, modvar, attrvalue)
 
         # initialize module if it has a Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):

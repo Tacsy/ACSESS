@@ -67,6 +67,12 @@ def Sphericity(mol):
     return False
 ExtraFilters['sphericity'].SetFilterRoutine(Sphericity)
 
+###########################################################
+
+newfilt = NewPatternFilter('Polycyclic3')
+newfilt.SetFilterPattern(Chem.MolFromSmarts('*@N(@*)@C@=*'))
+ExtraFilters['Polycyclic3'] = newfilt
+
 ############################################################
 #       Functions from QiuFilter.py
 ############################################################
