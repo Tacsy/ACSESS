@@ -13,7 +13,7 @@ debug = False
 # Initialize output files
 ##########################
 
-statcolumns = ('gen', 'diversity', 'nCand', 'nFilt', 'nDups', 'nExcp',
+statcolumns = ('gen', 'diversity', 'nPool', 'nCand', 'nFilt', 'nDups', 'nExcp',
                'nUnFit', 'nAdd', 'nAddFail', 'nAddArRing', 'nAddArRingFail',
                'nAtomType', 'nAtomTypeFail', 'nBreak', 'nBreakFail', 'nFlip',
                'nFlipFail', 'nNewRing', 'nNewRingFail', 'nRemove',

@@ -287,7 +287,6 @@ class NewPatternFilter(NewFilter):
         self.MyExceptions = exc
 
     def FilterWithExceptions(self, mol):
-        #matches=list( self.pattern.Match(mymol,True) )
         matches = list(mol.GetSubstructMatches(self.pattern))
         if not self.HasExceptions: return matches
 
@@ -297,10 +296,7 @@ class NewPatternFilter(NewFilter):
         # Remove matches that are substructures of exceptions
         # NOT TESTED:
         for exception in self.MyExceptions:
-            if debug and self.name == 'C==N': print Chem.MolToSmarts(exception)
             exmatches = mol.GetSubstructMatches(exception)
-            if debug and self.name == 'C=N':
-                print "exmatches:", exmatches, "matches:", matches
             for exmatch in exmatches:  # for each exception substructure found:
                 matches = [
                     match for match in matches if not match.issubset(exmatches)

@@ -19,7 +19,8 @@ def Initialize():
 
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
-    normalvar = lambda var: type(var) in primitiveTypes
+    isfilter   = lambda var: hasattr(var, '__name__') and var.__name__=='myfilter'
+    normalvar =  lambda var: type(var) in primitiveTypes or isfilter(var)
     notbuiltin = lambda var: not var.startswith('_')
 
     def goodvar(var, mod):
@@ -52,8 +53,13 @@ def Initialize():
 
     # Decide which modules have to be imported:
     _modules = [
-        'mutate', 'filters', 'Filters.DefaultFilters', 'drivers',
-        'rdkithelpers', 'output'
+        'mutate',
+        'filters',
+        'Filters.DefaultFilters',
+        'Filters.ExtraFilters',
+        'drivers',
+        'rdkithelpers',
+        'output'
     ]
     if hasattr(mprms, 'metric'):
         _modules.append('distance')
@@ -77,6 +83,7 @@ def Initialize():
         # initialize module if it has a Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
             getattr(_Mod, 'Init')()
+
 
     return
 
@@ -151,11 +158,12 @@ def StartLibAndPool(restart):
     #     Start pool    #
     #####################
 
-    #case 1: restart file ('pool.lib.gz')
-    '''
-    may work together with starting library
-    '''
-    #case 2: read from mprms.poolfile
+    if restart:
+        # there has to be a poolfile.
+        if not hasattr(mprms, 'poolFile'):
+            setattr(mprms, 'poolFile', 'pool.smi')
+
+    #case 1: read from mprms.poolfile
     if hasattr(mprms, 'poolFile'):
         pool = [mol for mol in lib]
         supplier = Chem.SmilesMolSupplier(mprms.poolFile, sanitize=False)
@@ -164,7 +172,7 @@ def StartLibAndPool(restart):
         print 'Initializing pool from ' + mprms.poolFile + ' of ' +\
                    str(len(newpool)) + ' molecules'
 
-    #case 3: read from mprms.poollib
+    #case 2: read from mprms.poollib
     elif hasattr(mprms, 'poolLib'):
         #poolLib is a list of SMILES
         pool = mprms.poolLib
@@ -174,7 +182,7 @@ def StartLibAndPool(restart):
             raise ValueError, "Poollib is empty."
         print "Initializing pool from mprms.poolLib"
 
-    #case 4: copy from library
+    #case 3: copy from library
     else:
         print 'Initializing pool from library'
         pool = [mol for mol in lib]
@@ -183,6 +191,7 @@ def StartLibAndPool(restart):
     setisosmi = lambda mol: mol.SetProp('isosmi', Chem.MolToSmiles(mol, True))
     map(setisosmi, pool)
     map(setisosmi, lib)
+
     ######### sanitize lib & pool
     ll1, lp1 = (len(lib), len(pool))
     lib = filter(Sane, lib)
@@ -194,5 +203,14 @@ def StartLibAndPool(restart):
     if not lp1 == lp2:
         print "removed {:d} unsane molecules from pool | poolsize: {:d}".format(
             lp1 - lp2, lp2)
+    ######### Do we have to refilter restarted pool/lib ?
+    if restart:
+        refilter=True
+        if refilter:
+            import drivers
+            dostartfilter = startiter>=drivers.startFilter
+            dogenstrucs   = startiter>=drivers.startGenStruc
+            lib = drivers.DriveFilters(lib, dostartfilter, dogenstrucs)
+            pool = drivers.DriveFilters(pool, dostartfilter, dogenstrucs)
 
     return startiter, lib, pool

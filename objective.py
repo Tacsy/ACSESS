@@ -6,6 +6,7 @@ import os
 import mprms
 from rdkit import Chem
 from rdkithelpers import *
+from drivers import RemoveDuplicates
 import distance
 import output
 
@@ -93,6 +94,7 @@ def EvaluateObjective(totallib, gen):
     global NumIn, NumOut
     nGen = mprms.nGen
     NumIn = len(totallib)
+    totallib = RemoveDuplicates(totallib)
 
     # 1. do actual objective evaluation
     UpdateObjective(totallib, gen)

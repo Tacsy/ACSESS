@@ -7,3 +7,6 @@
 /Examples/*.smi
 /Examples/*.dat
 /Examples/*.mol
+
+# ignore file automatically created by helpers.py
+omega.mol

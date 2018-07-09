@@ -96,7 +96,7 @@ def evolve():
                 f.write(Chem.MolToSmiles(mol) + '\n')
         if gen % mprms.writeInterval == 0 or gen == mprms.nGen - 1:
             DumpMols(lib, gen)
-            DumpMols(pool)
+        DumpMols(pool)
         stats['diversity'] = siml
         output.PrintTimings()
         output.PrintStat()

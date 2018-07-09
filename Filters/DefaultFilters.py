@@ -25,18 +25,6 @@ SAScore = 0.0
 
 ############ FILTERS
 
-# BREDT VIOLATIONS
-#AllFilters["Bredt's rule"]=NewFilter("Bredt's rule")
-#BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
-#BredtViolation=NewPatternFilter('bredt violation')
-#BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
-#BredtViolation.SetExceptions([ Chem.MolFromSmarts('[R]@[R&x3](@[R])@[x3,x4]')])#,
-#                           #    Chem.MolFromSmarts('[R]@;=,:[R&x3]@[R&x3]')])
-#AllFilters["Bredt's rule"].SetFilterRoutine(BredtsRule)
-#AllFilters["Bredt's rule"].SetFixRoutine(FixBredt)
-
-#######################################
-# Filters available to all flavors    #
 DefaultFilters['Too big'] = NewFilter('Too big')
 
 
@@ -115,18 +103,15 @@ def NotPlanarBoyes(mol):
 
 DefaultFilters['Non-planar graph (Boyes)'].SetFilterRoutine(NotPlanarBoyes)
 DefaultFilters['Non-planar graph (Boyes)'].SetFixRoutine(CutRings)
-
 DefaultFilters['Too many rings'] = NewFilter('Too many rings')
-
 
 def TooManyRings(mol):
     # Ring features
     if mol.GetNumAtoms() > maxRings:
-        nrings, sa, sb = SSSR(mol)
-        if sum(nrings) > maxRings:
-            return 'Too Many Rings'
+        nrings = mol.GetRingInfo().NumRings()
+        if nrings > maxRings:
+            return 'Too Many Rings: {}'.format(nrings)
     return False
-
 
 DefaultFilters['Too many rings'].SetFilterRoutine(TooManyRings)
 DefaultFilters['Too many rings'].SetFixRoutine(CutRings)
@@ -150,8 +135,10 @@ def CutBiggestRings(mol):
     ringatoms, ringbonds = SSSR_GetRings(mol)
     bondids = {bond.GetIdx(): bond for bond in mol.GetBonds()}
     changed = False
-    while sum(
-            mol.GetData('ringcounts')[maxRingSize - 2:]) > RingSizeExceptions:
+    while True:
+        nrings = map(int, mol.GetProp('ringcounts').split())
+        if not sum(nrings[maxRingSize - 2:]) > RingSizeExceptions:
+            break
         toobig = set()
         smallenough = set()
         for ring in ringbonds:
@@ -160,10 +147,13 @@ def CutBiggestRings(mol):
         canremove = toobig - smallenough
         removelist = [
             bondids[id] for id in canremove
-            if not bondids[id].HasData('mygroup')
+            if not bondids[id].HasProp('mygroup')
         ]
         if len(canremove) == 0: raise MutateFail()
-        else: mol.DeleteBond(random.choice(removelist))
+        else:
+            delbond = random.choice(removelist)
+            i, j = (delbond.GetBeginAtomIdx(), delbond.GetEndAtomIdx())
+            mol.RemoveBond(i, j)
         changed = True
         ringatoms, ringbonds = SSSR_GetRings(mol, True)
     return changed
@@ -177,44 +167,30 @@ LookUpFilter = NewFilter('Compound not in lookup table')
 def lu(mol):
     smi = Chem.MolToSmiles(mol, True)
     return (smi not in lookUpTable)
-
-
 LookUpFilter.SetFilterRoutine(lu)
 
 LipinskiFilter = NewFilter('Lipinski violation')
-
-
 def lp_routine(mol):
     return LipinskiRuleOf5(mol) > 1
-
 
 def LipinskiRuleOf5(mol):
     PropCalc(mol)
     ofs.flush()
-    return mol.GetData('Lipinski violations')
-
-
+    return mol.GetProp('Lipinski violations')
 LipinskiFilter.SetFilterRoutine(lp_routine)
 
 RuleOf10Filter = NewFilter('Rule of 10')
-
-
 def r10f_routine(mol):
     return RuleOf10(mol) > 10
-
 
 def RuleOf10(mol):
     OEPerceiveChiral(mol)
     ringcount, na, nb = SSSR(mol)
     nStereos = OECount(mol, OEIsChiralAtom()) + OECount(mol, OEIsChiralBond())
     return sum(ringcount) + nStereos
-
-
 RuleOf10Filter.SetFilterRoutine(r10f_routine)
 
 SAScoreFilter = NewFilter("SA-Score synthetic accessibility")
-
-
 def sascore_filt(mol):
     import os
     import SAS as sa
@@ -223,6 +199,4 @@ def sascore_filt(mol):
         return 'SAScore: ' + str(score)
     else:
         return False
-
-
 SAScoreFilter.SetFilterRoutine(sascore_filt)
