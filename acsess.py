@@ -92,8 +92,8 @@ def evolve():
 
         # 7. POSTLOGGING
         with open('mylib.smi', 'w') as f:
-            for mol in lib:
-                f.write(Chem.MolToSmiles(mol) + '\n')
+            for i, mol in enumerate(lib):
+                f.write(Chem.MolToSmiles(mol) + ' {:d}\n'.format(i))
         if gen % mprms.writeInterval == 0 or gen == mprms.nGen - 1:
             DumpMols(lib, gen)
         DumpMols(pool)

@@ -62,7 +62,7 @@ def PCA(data, nVectors=None, norm=False):
     means = X.mean(axis=0)
 
     # center data by mean
-    X_ave = X - mean
+    X_ave = X - means
 
     # normalize data by stddev
     if norm:
@@ -85,4 +85,10 @@ def PCA(data, nVectors=None, norm=False):
     # return a PCADecompose object
     kwargs = {}
     if norm: kwargs['std_devs'] = std_devs
-    return PCADecompose(means, evecs[:, sorter], evals[:, sorter], **kwargs)
+    try:
+        return PCADecompose(means, evecs[:, sorter], evals[:, sorter], **kwargs)
+    except IndexError:
+        print "evecs.shape, evals.shape:", evecs.shape, evals.shape
+        print "sorter:", sorter
+        return PCADecompose(means, evecs[:, sorter], evals[sorter], **kwargs)
+

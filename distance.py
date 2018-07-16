@@ -15,6 +15,8 @@ import output
 
 metric = None
 NormCoords = False
+dimRed=0
+
 '''
 this module include various previous modules that corresponds to chemical space
 representation and selection, including:
@@ -143,7 +145,15 @@ def GetStdDevs(mols):
     return std_dev
 
 
-def HandleMolCoords(mols, std_dev=None, norm=True):
+def HandleMolCoords(mols, std_dev=None, norm=True, _noDimRed=None):
+    ''' This function handles the coordinate settings
+
+    - coordinates are by default normalized
+    - coordinates can be reduced in dimensionality this is only done for the selection
+      procedure and cannot be used to calculate the aveNNDistance since the PCA covariance 
+      matrix differs every generation. Hence the _noDimRed keyword
+    - std_dev can be given or actually calculated
+    '''
     #assemble distance vectors
     if type(mols) == np.ndarray:
         coords = mols
@@ -152,6 +162,16 @@ def HandleMolCoords(mols, std_dev=None, norm=True):
         passMols = True
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])
+
+    # can we do a PCA reduction in the dimension of the coords?
+    if dimRed>0 and not _noDimRed:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=dimRed)
+        initial_shape = coords.shape
+        pca.fit(coords)
+        print "\tLeast explained variance:", pca.explained_variance_[-1]
+        coords = pca.transform(coords)
+        print "\tDimensionality reduction:", initial_shape, "to:", coords.shape
 
     #return coordinates according to normalization or not
     if not norm:
@@ -171,7 +191,10 @@ def HandleMolCoords(mols, std_dev=None, norm=True):
             except TypeError:
                 print coords
                 raise
-            std_dev = GetStdDevs(mols)
+            if dimRed and not _noDimRed:
+                std_dev = GetStdDevs(coords)
+            else:
+                std_dev = GetStdDevs(mols)
             return passMols, (coords - avgs) / std_dev
 
 
@@ -185,6 +208,7 @@ def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
     Prunes molecules that have no chance of being selected from 
     the set every 1000 steps
     '''
+
     passMols, coords = HandleMolCoords(mols)
     #if # of mols is smaller than # of mols selected, just keep all of them
     if len(mols) <= nMol:
@@ -263,7 +287,7 @@ def SplitSpace(ids, coords):
     coords = np.array([coords[i] for i in ids])
     pcaDecomp = PCA(coords)
 
-    pc1 = np.real(np.dot(coords, pcadecomp.evecs[:, 0]))
+    pc1 = np.real(np.dot(coords, pcaDecomp.evecs[:, 0]))
     avg = sum(pc1) / len(ids)
     std_dev = np.sqrt(sum((pc1 - avg)**2) / len(ids))
 
@@ -335,7 +359,8 @@ def PCAMaximin(mols, nMol, nsplit=None, verbose=False):
 
     if verbose:
         print 'PCA/Maximin: using fast maximin to select compounds on region bound aries.'
-    b_set = FastMaximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
+    #b_set = FastMaximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
+    b_set = Maximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
     pickset = [boundaryIDs[i] for i in b_set]
     startcoords = np.array([cb[i] for i in b_set])
 
@@ -383,8 +408,9 @@ def AveNNDistance(mols, getsqrt=False, std_dev=None):
     '''
     Calculate diversity function (average nearest-neighbor distance)
     '''
-    passMols, coords = HandleMolCoords(mols, std_dev=std_dev)
+    passMols, coords = HandleMolCoords(mols, std_dev=std_dev, _noDimRed=True)
 
+    print "in AveNNDistance: coords:", coords.shape
     N = len(coords)
     #determine if distance matrix needs to be chunked or not
     if N > 2000:

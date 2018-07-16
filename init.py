@@ -59,6 +59,7 @@ def Initialize():
         'Filters.ExtraFilters',
         'Filters.GDBFilters',
         'drivers',
+        'distance',
         'rdkithelpers',
         'output',
     ]
