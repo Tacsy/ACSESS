@@ -76,7 +76,7 @@ def Init():
                 ActiveFilters['qiu2'] = ExtraFilters['qiu2']
             else:
                 ActiveFilters[extrafilter] = ExtraFilters[extrafilter]
-        print "{} added".format(extrafilter)
+            print "{} added".format(extrafilter)
     if debug:
         for AcFil in sorted(ActiveFilters.keys()):
             print AcFil

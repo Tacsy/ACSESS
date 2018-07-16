@@ -60,7 +60,7 @@ def Initialize():
         'Filters.GDBFilters',
         'drivers',
         'rdkithelpers',
-        'output'
+        'output',
     ]
     if hasattr(mprms, 'metric'):
         _modules.append('distance')
@@ -68,6 +68,7 @@ def Initialize():
         _modules.append('similarity')
     if mprms.optimize:
         _modules.append('objective')
+        _modules.append('QCindes')
 
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:

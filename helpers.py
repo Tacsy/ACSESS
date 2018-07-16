@@ -318,7 +318,7 @@ def custom_redirection(fileobj):
         sys.stdout = old
 
 
-def xyzfromrdmol(rdmol, string=False):
+def xyzfromrdmol(rdmol, string=False, **kwargs):
     atomN = {
         1: 'H',
         5: 'B',
@@ -335,7 +335,7 @@ def xyzfromrdmol(rdmol, string=False):
     }
     with open('omega.mol', 'a') as out:
         with custom_redirection(out):
-            molcoords = Compute3DCoords(rdmol, string=string)
+            molcoords = Compute3DCoords(rdmol, **kwargs)
             if string:
                 xyz = molcoords
             else:
@@ -347,28 +347,32 @@ def xyzfromrdmol(rdmol, string=False):
 
 
 # calculate 3D coordinate of a molecule using RDKit build-in functions
-def Compute3DCoords(mol, string=False, ff='MMFF'):
+def Compute3DCoords(mol, ff='ETKDG', genconfs=False):
     ''' different types of 3D coordinate acquisition are available
     here the ETKDG / UFF / MMFF are provided.
     '''
 
     #mol: rdkit RWMol or Mol
-    molAddH = Chem.AddHs(mol)
-
-    try:
-        if ff == 'ETKDG':
-            #calculate mol 3D coordinate
-            AllChem.EmbedMolecule(molAddH, AllChem.ETKDG())
-        elif ff == 'UFF':
-            AllChem.EmbedMolecule(molAddH)
-            AllChem.UFFOptimizeMolecule(molAddH)
-        elif ff == 'MMFF':
-            AllChem.EmbedMolecule(molAddH)
-            AllChem.MMFFOptimizeMolecule(molAddH)
-        else:
-            raise TypeError('force field not recognized')
-    except ValueError:
-        raise NoGeom
+    if genconfs:
+        from rdkithelpers import ConformerGenerator
+        generator = ConformerGenerator(max_conformers=1)
+        molAddH = generator(mol)
+    else:
+        molAddH = Chem.AddHs(mol)
+        try:
+            if ff == 'ETKDG':
+                #calculate mol 3D coordinate
+                AllChem.EmbedMolecule(molAddH, AllChem.ETKDG())
+            elif ff == 'UFF':
+                AllChem.EmbedMolecule(molAddH)
+                AllChem.UFFOptimizeMolecule(molAddH)
+            elif ff == 'MMFF':
+                AllChem.EmbedMolecule(molAddH)
+                AllChem.MMFFOptimizeMolecule(molAddH)
+            else:
+                raise TypeError('force field not recognized')
+        except ValueError:
+            raise NoGeom
 
     molStr = Chem.MolToMolBlock(molAddH)
 

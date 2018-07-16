@@ -19,6 +19,7 @@ from helpers import Compute3DCoords, xyzfromrdmol
 
 from CINDES.utils.molecule import SmiMolecule
 table = None
+genconfs = False
 
 
 def Init():
@@ -101,7 +102,7 @@ def calculate(rdmols, run, QH2=False, gen=0):
 
 
 def getXYZ(rdmol):
-    xyz = xyzfromrdmol(rdmol)
+    xyz = xyzfromrdmol(rdmol, genconfs=genconfs)
     return xyz
 
 

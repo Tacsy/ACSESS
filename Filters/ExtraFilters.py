@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 from filters import NewFilter, NewPatternFilter
+from GDBFilters import FixByRemovingHeteroatoms
 from rdkit import Chem
 from rdkithelpers import *
 from copy import deepcopy
@@ -28,9 +29,11 @@ ExtraFilters['ExtraSmarts'].SetFilterRoutine(HasSmarts)
 ExtraFilters['ringshare3'] = NewFilter('ringshare3')
 def ringshare3(mol):
     rings = mol.GetRingInfo().AtomRings()
+    if not rings: return False
     combis= combinations(rings, 2)
     lintersect = lambda combi: len(set(combi[0]) & set(combi[1]))
     intersects = map(lintersect, combis)
+    if not intersects: return False
     if max(intersects)>2:
         return 'two rings share 3 atoms'
     else:
@@ -47,7 +50,8 @@ def HasAromaticity(oldmol):
     a2 = Chem.MolFromSmarts("C1~*-cc-*~*1")
     a3 = Chem.MolFromSmarts("O=C1-*(@[R]):,=*(@[R])-C(-*:,=-*1)=O")
     a4 = Chem.MolFromSmarts("[R]=*1-*=*-*(=*)-*=,:*1")
-    A = [a2, a3, a4]
+    a5 = Chem.MolFromSmarts("*=,:*1:*:*:*(=,:*)*:*1")
+    A = [a2, a3, a4, a5]
     if any(mol.HasSubstructMatch(a) for a in A):
         return False
     #if len(mol.GetAromaticAtoms()) or mol.HasSubstructMatch(a):
@@ -86,6 +90,11 @@ ExtraFilters['sphericity'].SetFilterRoutine(Sphericity)
 newfilt = NewPatternFilter('Polycyclic3')
 newfilt.SetFilterPattern(Chem.MolFromSmarts('*@N(@*)@C@=*'))
 ExtraFilters['Polycyclic3'] = newfilt
+
+newfilt = NewPatternFilter('nnn')
+newfilt.SetFilterPattern(Chem.MolFromSmarts("n~n~[#7]"))
+#newfilt.SetFixRoutine(FixByRemovingHeteroatoms)
+ExtraFilters['nnn'] = newfilt
 
 ############################################################
 #       Functions from QiuFilter.py
@@ -135,6 +144,36 @@ ExtraFilters['qiu2'].SetFilterRoutine(CheckBondOrder)
 #  HERE Some specific filters from Jos Teunissen #
 #  These will be removed in later versions       #
 ##################################################
+
+ExtraFilters['quinoid2'] = NewFilter('notquinoid2')
+def findQuinoid2(mol):
+    # quionoid matches
+    try:
+        Chem.Kekulize(mol, True)
+    except ValueError:
+        return 'unkekulizeable'
+    smarts = [
+            Chem.MolFromSmarts('[O,o;^2]~[^2]1~[^2]~[^2]~[^2](~[O,o;^2])~[^2]~[^2]1'),
+            Chem.MolFromSmarts('[O,o;^2]~[^2]1~[^2]~[^2]~[^2]~[^2]~[^2]1~[O,o;^2]'),
+            Chem.MolFromSmarts('[O,o;^2]~[^2]~[^2]1~[^2]~[^2]~[^2](~[^2][O,o;^2])~[^2]~[^2]1'),
+            Chem.MolFromSmarts('[O,o;^2]~[^2]~[^2]1~[^2]~[^2]~[^2]~[^2]~[^2]1~[^2]~[O,o;^2]') ]
+    answer = any( mol.HasSubstructMatch(smart) for smart in smarts )
+    Chem.SetAromaticity(mol)
+    if not answer:
+        return 'notquinoid2'
+    if True:  #set maximum number of carbonyl groups
+        nmax_co = 2
+        n_co = 0
+        carbonyl = Chem.MolFromSmarts('[#6]=,:[#8;X1]')
+        for match in mol.GetSubstructMatches(carbonyl):
+            n_co += 1
+    if n_co > 4:
+        return 'two many carbonyl groups'
+    elif n_co < 2:
+        return 'two few carbonyl groups'
+    else:
+        return False
+ExtraFilters['quinoid2'].SetFilterRoutine(findQuinoid2)
 
 
 
