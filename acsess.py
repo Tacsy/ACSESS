@@ -13,17 +13,20 @@ sys.path.append('.')
 import mprms
 import init
 import drivers as dr
+import celldiversity as cd
 import output
 from output import stats
 import objective
 from helpers import DumpMols, FinishSelection
 from distance import AveNNDistance
 from similarity import NNSimilarity
-iterhead = "\n-------------------- Iteration {0} ----------------\n"
 
+# set global variables:
+_iterhead = "\n-------------------- Iteration {0} ----------------\n"
+_gridAssign = None
 
 def initiate():
-    global startiter, lib, pool
+    global startiter, lib, pool, _gridAssign
     ##################################
     # 1. read input and initialize
     ##################################
@@ -32,11 +35,14 @@ def initiate():
     # 2. Get starting library
     ##################################
     startiter, lib, pool = init.StartLibAndPool(mprms.restart)
+
+    if mprms.cellDiversity:
+        siml,mylib,_gridAssign = cd.GridDiversity( [], lib+pool )
     return
 
 
 def evolve():
-    global startiter, lib, pool, iterhead
+    global startiter, lib, pool, _iterhead, _gridAssign
 
     ###################################################
     ##########                              ###########
@@ -48,7 +54,7 @@ def evolve():
         Tautomerizing, Filtering, GenStrucs = dr.SetIterationWorkflow(gen)
 
         # 1. PRELOGGING
-        print iterhead.format(gen)
+        print _iterhead.format(gen)
         stats.update({'gen': gen, 'nPool': len(pool), 'nLib': len(lib)})
 
         # 2.MUTATIONS AND CROSSOVERS
@@ -70,24 +76,31 @@ def evolve():
             pool = dr.ExtendPool(pool, lib, newlib)
 
         # 5. SELECTION
-        if mprms.optimize:
-            oldN = len(pool)
-            lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
-            stats['nUnFit'] = oldN - len(pool)
-        elif len(pool) > mprms.subsetSize:
-            #lib = random.sample(pool, mprms.subsetSize)
-            lib = dr.DriveSelection(pool, mprms.subsetSize)
+        siml = None
+        if mprms.cellDiversity:
+            if mprms.optimize:
+                siml, lib, _gridAssign = cd.GridDiversity(lib, newlib, molgrid=_gridAssign)
+            else:
+                siml, lib, _gridAssign = cd.GridDiversity_JITFilter(lib, newlib, molgrid=_gridAssign)
         else:
-            lib = [mol for mol in pool]
+            if mprms.optimize:
+                oldN = len(pool)
+                lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
+                stats['nUnFit'] = oldN - len(pool)
+            elif len(pool) > mprms.subsetSize:
+                lib = dr.DriveSelection(pool, mprms.subsetSize)
+            else:
+                lib = [mol for mol in pool]
         FinishSelection(lib)
-        if len(lib) == 0: raise RuntimeError('no molecules left')
+        if len(lib) == 0:
+            raise RuntimeError('no molecules left')
 
         # 6. DIVERSITY IS:
-        #siml = NNSimilarity(lib)
-        if hasattr(mprms, 'metric'):
-            siml = AveNNDistance(lib)
-        else:
-            siml = NNSimilarity(lib)
+        if siml is None:
+            if hasattr(mprms, 'metric'):
+                siml = AveNNDistance(lib)
+            else:
+                siml = NNSimilarity(lib)
         print '\nLIBRARY DIVERSITY: ', siml
 
         # 7. POSTLOGGING

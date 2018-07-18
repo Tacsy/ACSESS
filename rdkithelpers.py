@@ -6,6 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import traceback
 from molfails import MutateFail
+import numpy as np
 
 ########### Some global variables
 bondorder = {
@@ -415,13 +416,14 @@ class ConformerGenerator(object):
         minimization, increasing the size of the pool increases the chance
         of identifying max_conformers unique conformers.
     """
-    def __init__(self, max_conformers=1, rmsd_threshold=0.5, force_field='uff',
-                 pool_multiplier=10):
+    def __init__(self, max_conformers=1, rmsd_threshold=0.5, force_field='mmff94s',
+                 pool_multiplier=20):
         self.max_conformers = max_conformers
         if rmsd_threshold is None or rmsd_threshold < 0:
             rmsd_threshold = -1.
         self.rmsd_threshold = rmsd_threshold
         self.force_field = force_field
+        print "forcefield:", force_field
         self.pool_multiplier = pool_multiplier
 
     def __call__(self, mol):

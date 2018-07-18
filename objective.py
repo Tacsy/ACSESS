@@ -23,7 +23,6 @@ array_or = np.vectorize(lambda x, y: x or y)
 sumhelper = None
 qscatter = False
 CINDES_interface = False
-CINDES_run = None
 debug = False
 OBDatabase = None
 NumIn = None
@@ -40,9 +39,8 @@ def Init():
                          'but SaveStruc is false.')
 
     if CINDES_interface:
+        global qc
         import QCindes as qc
-        CINDES_run = qc.Init()
-        print CINDES_run
     else:
         raise NotImplementedError(
             'only CINDES objectives are supported currently')
@@ -61,10 +59,8 @@ fitnessformat = '{0:>7} {1:>8} {2:>8} {3:>10} {4:>10} {5:>10} {6:>10}'
 #Drive computation of Objective Function
 def ComputeObjectives(mols_tocalc, gen=0):
     if CINDES_interface:
-        import QCindes as qc
-        global CINDES_run
         print 'calculating via CINDES program'
-        qc.calculate(mols_tocalc, CINDES_run, gen=gen)
+        qc.calculate(mols_tocalc, gen=gen)
     else:  #Serial
         raise NotImplementedError(
             'only CINDES objectives are supported currently')

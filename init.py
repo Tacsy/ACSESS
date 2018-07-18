@@ -47,12 +47,15 @@ def Initialize():
         mprms.optimize = False
     if not hasattr(mprms, 'restart'):
         mprms.restart = False
+    if not hasattr(mprms, 'cellDiversity'):
+        mprms.cellDiversity = False
     mprms.MxAtm = 50
     mprms.EdgeRatio = 0.1
     mprms.EdgeLen = 10
 
     # Decide which modules have to be imported:
     _modules = [
+        'acsess',
         'mutate',
         'filters',
         'Filters.DefaultFilters',
@@ -67,6 +70,8 @@ def Initialize():
         _modules.append('distance')
     else:
         _modules.append('similarity')
+    if hasattr(mprms, 'cellDiversity') and mprms.cellDiversity is True:
+        _modules.append('celldiversity')
     if mprms.optimize:
         _modules.append('objective')
         _modules.append('QCindes')
