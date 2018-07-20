@@ -17,7 +17,6 @@ bondorder = {
 aromatic = False
 verbose  = True
 
-
 ############ FROM CANONICAL #############################
 def Finalize(mol, CanonicalTautomer=False, aromatic=aromatic):
     ''' This function makes sure that a new mutated/crossover/fixfilter molecule:
@@ -417,7 +416,7 @@ class ConformerGenerator(object):
         of identifying max_conformers unique conformers.
     """
     def __init__(self, max_conformers=1, rmsd_threshold=0.5, force_field='mmff94s',
-                 pool_multiplier=20):
+                 pool_multiplier=10):
         self.max_conformers = max_conformers
         if rmsd_threshold is None or rmsd_threshold < 0:
             rmsd_threshold = -1.
@@ -448,6 +447,7 @@ class ConformerGenerator(object):
         """
 
         # initial embedding
+        print "embedding...",
         mol = self.embed_molecule(mol)
         if not mol.GetNumConformers():
             msg = 'No conformers generated for molecule'
@@ -459,7 +459,9 @@ class ConformerGenerator(object):
             raise RuntimeError(msg)
 
         # minimization and pruning
+        print "minimizing...",
         self.minimize_conformers(mol)
+        print "pruning...",
         mol = self.prune_conformers(mol)
 
         return mol

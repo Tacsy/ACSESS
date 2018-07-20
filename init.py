@@ -225,4 +225,7 @@ def StartLibAndPool(restart):
             lib = drivers.DriveFilters(lib, dostartfilter, dogenstrucs)
             pool = drivers.DriveFilters(pool, dostartfilter, dogenstrucs)
 
+    if len(lib)>mprms.subsetSize:
+        raise NotImplementedError('len startinglibrary larger than maxSubsetSize')
+
     return startiter, lib, pool

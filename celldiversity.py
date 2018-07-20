@@ -3,6 +3,7 @@ import numpy as np
 from helpers import *
 from pcadimreduction import PCA
 import parallel as pl
+import mprms
 import output as oput
 from distance import HandleMolCoords as GetCoords
 from distance import SetCoords, ScatterCoords
@@ -19,8 +20,10 @@ nBins=None
 DE=True
 
 def Init():
-    global nCellDims
+    global nCellDims, grid
     nCellDims = len(nBins)
+    if mprms.restart:
+        grid=Depickle('grid.P')
     return
 
 #Lay a grid over space in first ndims dimensions, based on boundaries

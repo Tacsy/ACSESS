@@ -21,7 +21,7 @@ from CINDES.utils.molecule import SmiMolecule
 table = None
 run = None
 RDGenConfs = False
-
+pool_multiplier=10
 
 def Init():
     global run, table
@@ -52,7 +52,7 @@ def calculate(rdmols, QH2=False, gen=0):
     # CINDES.utils.molecule.SmiMolecule objects
     mols = [SmiMolecule(Chem.MolToSmiles(rdmol, True)) for rdmol in rdmols]
     for mol, rdmol in zip(mols, rdmols):
-        mol.xyz = xyzfromrdmol(rdmol, RDGenConfs=RDGenConfs)
+        mol.xyz = xyzfromrdmol(rdmol, RDGenConfs=RDGenConfs, pool_multiplier=pool_multiplier)
         mol.rdmol=rdmol
 
     # check if already in database
@@ -89,8 +89,8 @@ def calculate(rdmols, QH2=False, gen=0):
     for mol in mols:
         mol.rdmol.SetDoubleProp('Objective', float(mol.Pvalue))
 
-    from CINDES.INDES.loggings import log_table
     print "logging table..."
+    from CINDES.INDES.loggings import log_table
     log_table(mols, table)
 
     return

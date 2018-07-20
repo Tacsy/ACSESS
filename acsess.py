@@ -38,6 +38,7 @@ def initiate():
 
     if mprms.cellDiversity:
         siml,mylib,_gridAssign = cd.GridDiversity( [], lib+pool )
+        #wrotepool=set( m.GetData('isosmi') for m in mylib+pool )
     return
 
 

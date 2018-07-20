@@ -348,7 +348,7 @@ def xyzfromrdmol(rdmol, string=False, **kwargs):
 
 # calculate 3D coordinate of a molecule using RDKit build-in functions
 # note that output of this function is often redirected to omega.out
-def Compute3DCoords(mol, ff='ETKDG', RDGenConfs=False):
+def Compute3DCoords(mol, ff='ETKDG', RDGenConfs=False, **kwargs):
     ''' different types of 3D coordinate acquisition are available
     here the ETKDG / UFF / MMFF are provided.
     '''
@@ -356,7 +356,7 @@ def Compute3DCoords(mol, ff='ETKDG', RDGenConfs=False):
     #mol: rdkit RWMol or Mol
     if RDGenConfs:
         from rdkithelpers import ConformerGenerator
-        generator = ConformerGenerator(max_conformers=1)
+        generator = ConformerGenerator(max_conformers=1, **kwargs)
         molAddH = generator(mol)
     else:
         molAddH = Chem.AddHs(mol)
