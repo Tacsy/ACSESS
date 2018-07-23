@@ -66,7 +66,7 @@ def Initialize():
         'rdkithelpers',
         'output',
     ]
-    if hasattr(mprms, 'metric'):
+    if hasattr(mprms, 'metric') and not mprms.metric in ['', 'similarity']:
         _modules.append('distance')
     else:
         _modules.append('similarity')
@@ -74,6 +74,7 @@ def Initialize():
         _modules.append('celldiversity')
     if mprms.optimize:
         _modules.append('objective')
+    if hasattr(mprms, 'CINDES_interface') and mprms.CINDES_interface is True:
         _modules.append('QCindes')
 
     # Import the modules / Set the global variables / Initiate modules

@@ -44,7 +44,7 @@ def Init():
         from molproperty import CalcMQNs as Coords
     elif metric == 'autocorr':
         from molproperty import MoreauBrotoACVec as Coords
-    elif metric.lower() == 'autocorr2d':
+    elif str(metric).lower() == 'autocorr2d':
         from molproperty import AutoCorr2D as Coords
     elif metric is None:
         print 'No coordinate system set!, so Similarity measures will be used!'

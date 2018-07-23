@@ -22,8 +22,9 @@ FixedCutoff = False
 InitialCutoff = 0.0
 TakeFittest = 1
 SaturateAt = 0.8
+NeighborhoodMaximin=True
 NeighborhoodFactor = 0.75
-qscatter = False
+fitnessfunction = None
 CINDES_interface = False
 debug = False
 NumIn = None
@@ -42,6 +43,8 @@ def Init():
     if CINDES_interface:
         global qc
         import QCindes as qc
+    elif callable(fitnessfunction):
+        pass
     else:
         raise NotImplementedError(
             'only CINDES objectives are supported currently')
@@ -56,6 +59,10 @@ def ComputeObjectives(mols_tocalc, gen=0):
     if CINDES_interface:
         print 'calculating via CINDES program'
         qc.calculate(mols_tocalc, gen=gen)
+    elif callable(fitnessfunction):
+        for mol in mols_tocalc:
+            value = fitnessfunction(mol)
+            mol.SetDoubleProp('Objective', float(value))
     else:  #Serial
         raise NotImplementedError(
             'only CINDES objectives are supported currently')
@@ -130,16 +137,14 @@ def SelectFittest(newpool, subsetSize, gen):
         mostfit = newpool[0:TakeFittest]
         pool = newpool[TakeFittest:]
 
-        # 2. Do some initializations:
-        scores = np.ma.array([mol.GetDoubleProp('Objective') for mol in pool])
-        if _sumhelper is None: sumhelper = np.ones(len(coords[0]))
-
-        # 3. we assign molecular coordinates to the molecules in pool
+        # 2. we assign molecular coordinates to the molecules in pool
         distance.ScatterCoords(pool)
         coords = np.array([GetListProp(mol, 'coords') for mol in pool])
 
-        # Allows you to do pure Fitness based selection
-        #if subsetSize <= 0: return mostfit, [], newpool
+        # 3. Do some initializations:
+        scores = np.ma.array([mol.GetDoubleProp('Objective') for mol in pool])
+        if _sumhelper is None:
+            _sumhelper = np.ones(len(coords[0]))
 
         # 4 Calculate the diversity measure for the pure diversity subset
         # 4.1 First Select a pure diversity based sample subset
