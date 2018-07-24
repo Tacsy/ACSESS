@@ -140,16 +140,13 @@ def SelectFittest(newpool, subsetSize, gen):
             if mprms._similarity:
                 selector  = NeighborhoodMaximinSimilarity(subsetSize)
             else:
-                selector  = NeighborhoodMaximin(subsetSize)
-            newlib = selector.select(pool)
-        elif False:
-            # here I could call a function optimizing diversity and the objective value by optimizing
-            # a fitnessfunction: fitness(x) = c1 * Div(x) + c2 * Prop(x) with
-            # - c1 + c2 = 1
-            # - Div and Prop are normalized: Take care of outliers(inf / -inf values!) / negative+positive values
-            pass
+                selector  = NeighborhoodMaximinSelector(subsetSize)
         else:
-            raise NotImplementedError('currently only NeighborhoodMaximin is implemented')
+            if mprms._similarity:
+                raise NotImplementedError('currently only NeighborhoodMaximin is implemented')
+            else:
+                selector = SumSelect(subsetSize)
+        newlib = selector.select(pool)
     else:
         newlib = newpool
         mostfit = []
@@ -170,7 +167,7 @@ def SelectFittest(newpool, subsetSize, gen):
     return newlib, newpool
 
 
-class NeighborhoodMaximin(object):
+class NeighborhoodMaximinSelector(object):
     def __init__(self, subsetSize):
         self.subsetSize = subsetSize
         return
@@ -313,7 +310,7 @@ class NeighborhoodMaximin(object):
         output.obstats['nSwap']=nSwap
         return newlib
 
-class NeighborhoodMaximinSimilarity(NeighborhoodMaximin):
+class NeighborhoodMaximinSimilarity(NeighborhoodMaximinSelector):
     @staticmethod
     def GetCoords(pool):
         sim = similarity.GenFPSimMatrix(pool)
@@ -351,6 +348,64 @@ class NeighborhoodMaximinSimilarity(NeighborhoodMaximin):
         return neighbor_pick_mask
 
 
+class SumSelect(NeighborhoodMaximinSelector):
+    """
+    a fitnessfunction: fitness(x) = c1 * Div(x) + c2 * Prop(x) with
+    - c1 + c2 = 1
+    - Div and Prop are normalized: Take care of outliers(inf / -inf values!) / negative+positive values
+    """
+    def __init__(self, subsetSize, cdiv=0.5):
+        self.subsetSize = subsetSize
+        self.cdiv = cdiv
+        self.pdiv = 1.0 - cdiv
 
+    def GetDistances(self, coords):
+        from scipy.spatial import distance_matrix
+        Dmatrix = distance_matrix(coords, coords, p=2)
+        Dvector = np.sum(Dmatrix, axis=1)
+        return Dvector
 
+    def select(self, pool):
+        nSwap = 0
+ 
+        # 2. we assign molecular coordinates to the molecules in pool
+        coords = self.GetCoords(pool)
+ 
+        # 3. Do some initializations:
+        scores = np.array([mol.GetDoubleProp('Objective') for mol in pool])
+ 
+        # 4 Calculate the diversity measure for the pure diversity subset
+        # 4.1 First Select a pure diversity based sample subset
+        picks = self.GetPureDiversityPicks(coords)
+        templib = [pool[i] for i in picks]
+        # 4.2
+        coords = self.NormCoords(coords, templib)
+        # 4.3 calculate the average distance
+        AveDistSqr = self.GetAveDistSqr(templib)
+        # 4.4 calculate the average objective value
+        aveobj = sum( m.GetDoubleProp('Objective') for m in templib) / (float(len(templib))) 
+        print 'Average objective value of pure diversity subset:', aveobj
+ 
+        output.StartTimer("OBJECTIVE MXMN")
+        print 'Optimizing library ...',
 
+        distances = self.GetDistances(coords)
+       
+        # scale scores and diversity-values:
+        from sklearn import preprocessing
+        distances = preprocessing.scale(distances)
+        scores = preprocessing.scale(scores)
+
+        fitness = self.cdiv * distances + self.pdiv * scores * minsign
+        fittests= np.argsort(fitness)
+
+        newlib = []
+        for i in fittests[-self.subsetSize:]:
+            newlib.append(pool[i])
+        newlib.sort(
+            key=lambda x: x.GetDoubleProp('Objective'), reverse=not minimize)
+        print 'Average objective value after optimization: ', sum(
+                np.array([m.GetDoubleProp('Objective') for m in newlib])/float(len(newlib)))
+ 
+        output.EndTimer('OBJECTIVE MXMN')
+        return newlib

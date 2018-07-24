@@ -100,10 +100,10 @@ def Initialize():
                 attrvalue = getattr(mprms, modvar)
                 #than change it:
                 setattr(_Mod, modvar, attrvalue)
-                if len(repr(attrvalue))>40:
-                    print "set attr: {:_>22}.{:19}".format(module, modvar)
+                if len(repr(attrvalue))>41:
+                    print "set attr: {:_>22}.{:20}".format(module, modvar)
                 else:
-                    print "set attr: {:_>22}.{:_<18} : {}".format(module, modvar, attrvalue)
+                    print "set attr: {:_>22}.{:_<19} : {}".format(module, modvar, attrvalue)
 
         # initialize module if it has an Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
