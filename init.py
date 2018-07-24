@@ -54,6 +54,7 @@ def Initialize():
     mprms.EdgeLen = 10
 
     # Decide which modules have to be imported:
+    # The following modules will always be loaded:
     _modules = [
         'acsess',
         'mutate',
@@ -66,14 +67,25 @@ def Initialize():
         'rdkithelpers',
         'output',
     ]
+
+    # Here we decide wich other modules to load as well:
+    # set diversity framework: distance or similarity based.
     if hasattr(mprms, 'metric') and not mprms.metric in ['', 'similarity']:
+        setattr(mprms, '_similarity', False)
         _modules.append('distance')
     else:
+        setattr(mprms, '_similarity', True)
         _modules.append('similarity')
+
+    # set diversity algorithm: Maximin or CellDiversity
     if hasattr(mprms, 'cellDiversity') and mprms.cellDiversity is True:
         _modules.append('celldiversity')
+
+    # set optimization algorithm. pure diversity or property-optimizing
     if mprms.optimize:
         _modules.append('objective')
+
+    # check if the CINDES program will be used to calculate the property values
     if hasattr(mprms, 'CINDES_interface') and mprms.CINDES_interface is True:
         _modules.append('QCindes')
 
@@ -93,10 +105,9 @@ def Initialize():
                 else:
                     print "set attr: {:_>22}.{:_<18} : {}".format(module, modvar, attrvalue)
 
-        # initialize module if it has a Init function
+        # initialize module if it has an Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
             getattr(_Mod, 'Init')()
-
 
     return
 

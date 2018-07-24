@@ -239,12 +239,12 @@ def DriveSelection(pool, subsetSize):
     print "selecting...",
     sys.stdout.flush()
     #1. select maximin algorithm.
-    if hasattr(mprms, 'metric'):
-        from distance import Maximin
-        lib = Maximin(pool, mprms.subsetSize)
-    else:
+    if mprms._similarity:
         from similarity import FPMaximin
         lib = FPMaximin(pool, mprms.subsetSize)
+    else:
+        from distance import Maximin
+        lib = Maximin(pool, mprms.subsetSize)
     return lib
 
 

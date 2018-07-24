@@ -98,10 +98,10 @@ def evolve():
 
         # 6. DIVERSITY IS:
         if siml is None:
-            if hasattr(mprms, 'metric'):
-                siml = AveNNDistance(lib)
-            else:
+            if mprms._similarity:
                 siml = NNSimilarity(lib)
+            else:
+                siml = AveNNDistance(lib)
         print '\nLIBRARY DIVERSITY: ', siml
 
         # 7. POSTLOGGING
