@@ -46,6 +46,10 @@ def Init():
         from molproperty import MoreauBrotoACVec as Coords
     elif str(metric).lower() == 'autocorr2d':
         from molproperty import AutoCorr2D as Coords
+    elif str(metric) == 'AutoCorrModred':
+        from molproperty import AutoCorrModred as Coords
+    elif str(metric) == 'MoreauBroto':
+        from molproperty import MoreauBrotoPyBioMed as Coords
     elif metric is None:
         print 'No coordinate system set!, so Similarity measures will be used!'
     else:

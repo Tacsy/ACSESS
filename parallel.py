@@ -4,7 +4,10 @@ import sys
 import time
 
 import numpy as np
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except ImportError:
+    print "MPI4PY module not loaded"
 
 import output
 mpi = False

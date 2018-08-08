@@ -19,8 +19,9 @@ def Initialize():
 
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
-    isfilter   = lambda var: hasattr(var, '__name__') and var.__name__=='myfilter'
-    normalvar =  lambda var: type(var) in primitiveTypes or isfilter(var)
+    isinputfunction= lambda var: hasattr(var, '__name__') and var.__name__ in [
+            'myfilter', 'fitnessfunction']
+    normalvar =  lambda var: type(var) in primitiveTypes or isinputfunction(var)
     notbuiltin = lambda var: not var.startswith('_')
 
     def goodvar(var, mod):
@@ -237,7 +238,7 @@ def StartLibAndPool(restart):
             lib = drivers.DriveFilters(lib, dostartfilter, dogenstrucs)
             pool = drivers.DriveFilters(pool, dostartfilter, dogenstrucs)
 
-    if len(lib)>mprms.subsetSize:
+    if len(lib)>mprms.subsetSize + mprms.edgeLen:
         raise NotImplementedError('len startinglibrary larger than maxSubsetSize')
 
     return startiter, lib, pool

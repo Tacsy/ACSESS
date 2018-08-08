@@ -12,6 +12,7 @@ import math
 from collections import defaultdict
 
 import os
+
 '''
 this module include various previous modules that corresponding to molecular
 property calculation, including:
@@ -26,6 +27,26 @@ def AutoCorr2D(mol):
     from rdkit.Chem import rdMolDescriptors
     vector = rdMolDescriptors.CalcAUTOCORR2D(mol)
     return vector
+
+def AutoCorrMordred(mol):
+    from mordred import Calculator, Autocorrelation
+    calc = Calculator()
+    # ATS, ATSC, AATS, AATSC ?
+    descriptor = Autocorrelation.AATS
+    calc.register(descriptor)
+    res = calc(mol)
+    return [ value for (key, value) in sorted(res.items())]
+
+def MoreauBrotoPyBioMed(mol):
+    #from PyBioMed import Pymolecule
+    #_mol = Pymolecule.PyMolecule()
+    #smi = Chem.MolToSmiles(mol)
+    #_mol.ReadMolFromSmile('C(c1ccccc1)C(C)O')
+    #vector = _mol.GetMoreauBroto().values()
+    from PyBioMed.PyMolecule.moreaubroto import GetMoreauBrotoAuto
+    vector = GetMoreauBrotoAuto(mol)
+    # vector is a dict so return it as a list sorted based on the dict keys
+    return [ value for (key, value) in sorted(vector.items())]
 
 
 ############################################################

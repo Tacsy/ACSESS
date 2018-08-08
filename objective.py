@@ -23,7 +23,7 @@ TakeFittest = 1
 SaturateAt = 0.8
 NeighborhoodMaximin=True
 NeighborhoodFactor = 0.75
-fitnessfunction = None
+def fitnessfunction(): pass
 CINDES_interface = False
 debug = True
 
@@ -120,6 +120,7 @@ def EvaluateObjective(totallib, gen):
     print 'Removed', NumIn - NumOut, 'compounds using objective function threshold'
 
     output.obstats.clear()
+    output.obstats['CutOff'] = cutoff
     output.obstats['NumIn']=NumIn
     output.obstats['NumOut']=NumOut
 
@@ -168,6 +169,7 @@ def SelectFittest(newpool, subsetSize, gen):
 
 
 class NeighborhoodMaximinSelector(object):
+    selectfittest=False # False is original method
     def __init__(self, subsetSize):
         self.subsetSize = subsetSize
         return
@@ -249,6 +251,9 @@ class NeighborhoodMaximinSelector(object):
         # mask every value larger than TargetScore.
         targetmask = np.ma.getmask(
             np.ma.masked_greater(scores * minsign, TargetScore * minsign))
+        print "targetmask:", targetmask
+        print "scores*minsign:", scores * minsign
+        print "TargetScore * minsign:", TargetScore * minsign
  
         output.StartTimer("OBJECTIVE MXMN")
         print 'Optimizing library ...',
@@ -256,24 +261,30 @@ class NeighborhoodMaximinSelector(object):
  
         ######### MAIN LOOP #########
         for ipick in picks:
+
             myscore = pool[ipick].GetDoubleProp('Objective')
-            #Skip compounds already at target
-            if myscore * minsign <= TargetScore * minsign:
-                newlib.append(pool[ipick])
-                continue
+            if not self.selectfittest:
+                #Skip compounds already at target
+                if myscore * minsign <= TargetScore * minsign:
+                    newlib.append(pool[ipick])
+                    continue
  
             #Mask compounds outside of current neighborhood
             #or that have already been picked
             distsqr = self.GetDistSqr(coords, ipick)
             neighbor_pick_mask = self.GetNeighborPickMask(distsqr, AveDistSqr, pickmask)
 
-            #If any compounds in the neighborhood hit the target, pick
-            #the closest one
-            # get dist's of mols not already picked, in neighborhood
-            # and objective value above cutoff value
-            distsqr = np.ma.masked_array(
-                distsqr, mask=_array_or(targetmask, neighbor_pick_mask))
+            mask = _array_or(targetmask, neighbor_pick_mask)
+            if self.selectfittest:
+                distsqr = np.ma.masked_array(scores * -1.0 * minsign, mask=mask)
+            else:
+                 #If any compounds in the neighborhood hit the target, pick
+                 #the closest one
+                 # get dist's of mols not already picked, in neighborhood
+                 # and objective value above cutoff value
+                 distsqr = np.ma.masked_array(distsqr, mask=mask)
             if distsqr.count() > 0:
+                print "I'm here!"
                 # change pick for best pick:
                 inewpick = np.argmin(distsqr)
                 newlib.append(pool[inewpick])
