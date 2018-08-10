@@ -15,6 +15,8 @@ import output
 
 metric = None
 NormCoords = True
+extendCoords = False
+extendVariance = 1.0
 dimRed=0
 
 '''
@@ -40,14 +42,14 @@ def Init():
     global Coords
 
     # set coordination system
-    if metric == 'mqn':
+    if str(metric).lower() == 'mqn':
         from molproperty import CalcMQNs as Coords
     elif metric == 'autocorr':
-        from molproperty import MoreauBrotoACVec as Coords
+        from molproperty import MoreauBrotoACVector as Coords
     elif str(metric).lower() == 'autocorr2d':
         from molproperty import AutoCorr2D as Coords
-    elif str(metric) == 'AutoCorrModred':
-        from molproperty import AutoCorrModred as Coords
+    elif str(metric) == 'AutoCorrMordred':
+        from molproperty import AutoCorrMordred as Coords
     elif str(metric) == 'MoreauBroto':
         from molproperty import MoreauBrotoPyBioMed as Coords
     elif metric is None:
@@ -64,10 +66,31 @@ def SetCoords(mol):
         coord = GetListProp(mol, 'coords')
     else:
         coord = Coords(mol)
+
+        # this would be a good position for a coordinate extension.
+        if extendCoords:
+            ExtendCoords(mol, coord)
+
         coord = np.nan_to_num(coord)
         SetListProp(mol, 'coords', coord)
     return np.array(coord)
 
+def ExtendCoords(mol, coord):
+    if True:
+        dco = np.nan
+        # add the distance between the C=O groups
+        Chem.Kekulize(mol, True)
+        dx = "O=C{}C=O"
+        D = [ (i, Chem.MolFromSmarts(dx.format("*=*-"*i))) for i in range(5) ]
+        for d, pattern in D:
+           if mol.HasSubstructMatch(pattern):
+               dco = d
+        if dco is None:
+            print Chem.MolToSmiles(mol)
+            #raise Exception('not a valid molecule')
+            print 'not a valid molecule for coord extension'
+        coord.append(dco)
+    return coord
 
 # Drive MPI coordinate calculation
 def ScatterCoords(mols):
@@ -178,16 +201,13 @@ def HandleMolCoords(mols, std_dev=None, norm=True, _noDimRed=None):
         print "\tDimensionality reduction:", initial_shape, "to:", coords.shape
 
     #return coordinates according to normalization or not
-    if not norm:
-        return passMols, coords
-    else:
+    if norm is True:
         #normalize coordinates using given std_dev
         if std_dev is not None:
             avgs = np.average(coords, axis=0)
             if not (type(std_dev) == np.ndarray and std_dev.ndim == 1):
                 std_dev = GetStdDevs(std_dev)
 
-            return passMols, (coords - avgs) / std_dev
         #normalize coordinates by their std_dev
         else:
             try:
@@ -199,7 +219,17 @@ def HandleMolCoords(mols, std_dev=None, norm=True, _noDimRed=None):
                 std_dev = GetStdDevs(coords)
             else:
                 std_dev = GetStdDevs(mols)
-            return passMols, (coords - avgs) / std_dev
+        coords = (coords - avgs) / std_dev
+
+    if extendCoords and extendVariance:
+        coords[:, -1] = coords[:, -1] * extendVariance
+
+    if True:
+        import pickle
+        with open('coords.p', 'wb') as f:
+            pickle.dump(coords, f)
+
+    return passMols, coords
 
 
 def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
@@ -213,7 +243,8 @@ def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
     the set every 1000 steps
     '''
 
-    passMols, coords = HandleMolCoords(mols)
+    passMols, coords = HandleMolCoords(mols, norm=NormCoords)
+    print "coords[0]", coords[0]
     #if # of mols is smaller than # of mols selected, just keep all of them
     if len(mols) <= nMol:
         if not passMols:
@@ -408,11 +439,11 @@ def MPI_PCA_Maximin(MPISEND):
     return picks
 
 
-def AveNNDistance(mols, getsqrt=False, std_dev=None):
+def AveNNDistance(mols, getsqrt=False, std_dev=None, norm=True):
     '''
     Calculate diversity function (average nearest-neighbor distance)
     '''
-    passMols, coords = HandleMolCoords(mols, std_dev=std_dev, _noDimRed=True)
+    passMols, coords = HandleMolCoords(mols, std_dev=std_dev, _noDimRed=True, norm=norm)
 
     print "in AveNNDistance: coords:", coords.shape
     N = len(coords)

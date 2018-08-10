@@ -101,7 +101,10 @@ def evolve():
             if mprms._similarity:
                 siml = NNSimilarity(lib)
             else:
-                siml = AveNNDistance(lib)
+                # library diversity should not be assessed by normalization of only
+                # the lib. so either no normalization or a normalization based on 
+                # the whole pool.
+                siml = AveNNDistance(lib, norm=False)
         print '\nLIBRARY DIVERSITY: ', siml
 
         # 7. POSTLOGGING

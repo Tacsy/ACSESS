@@ -64,7 +64,6 @@ def Initialize():
         'Filters.ExtraFilters',
         'Filters.GDBFilters',
         'drivers',
-        'distance',
         'rdkithelpers',
         'output',
     ]
@@ -92,8 +91,11 @@ def Initialize():
 
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:
+        # module names are relative so add a dot
+        rmodule = '{}'.format(module)
+        # and import them relative the our ACSESS package:
+        _Mod = importlib.import_module(rmodule, package='ACSESS')
         # get normal global variables of the modules
-        _Mod = importlib.import_module(module)
         modvars = [var for var in dir(_Mod) if goodvar(var, _Mod)]
         for modvar in modvars:
             # check if mprms has same attr:

@@ -125,6 +125,7 @@ def FixAndFilter(mol):
 
 def FixFilters(mol):
     changed = False
+    failure = False
     #if SetSulfurState(mol): changed=True
     #First, try geometry filter
     if mol.HasProp('hasstructure'):

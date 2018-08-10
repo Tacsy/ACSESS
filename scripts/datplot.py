@@ -22,7 +22,7 @@ print df
 ####################################
 ## plot 1: diversity, nPool, nLib ##
 ####################################
-if False:
+if True:
     plt.figure(1)
 
     plt.subplot(311)

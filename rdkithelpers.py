@@ -179,7 +179,18 @@ def SetListProp(mol, name, iterable):
     ''' Since rdkit molecules can only store single values, list properties 
     are stored as strings. Values are separated by a space
     NB: float precision is hardcoded to 20 decimals'''
-    string = ' '.join(['{:.20f}'.format(x) for x in iterable])
+    try:
+        string = ' '.join(['{:.20f}'.format(x) for x in iterable])
+    except ValueError:
+        print iterable
+        print x, type(x)
+        for x in iterable:
+            try:
+                float(x)
+            except ValueError:
+                print x, type(x)
+                raise
+        raise
     mol.SetProp(name, string)
 
 

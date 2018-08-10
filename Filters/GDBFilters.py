@@ -2,8 +2,8 @@
 #-*- coding: utf-8 -*-
 debug = False
 
-from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
+from filters import NewFilter, NewPatternFilter
 from rdkithelpers import *
 from molfails import *
 import random
