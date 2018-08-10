@@ -20,7 +20,7 @@ def Initialize():
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
     isinputfunction= lambda var: hasattr(var, '__name__') and var.__name__ in [
-            'myfilter', 'fitnessfunction']
+            'myfilter', 'fitnessfunction', 'extender']
     normalvar =  lambda var: type(var) in primitiveTypes or isinputfunction(var)
     notbuiltin = lambda var: not var.startswith('_')
 
@@ -73,6 +73,7 @@ def Initialize():
     if hasattr(mprms, 'metric') and not mprms.metric in ['', 'similarity']:
         setattr(mprms, '_similarity', False)
         _modules.append('distance')
+        _modules.append('molproperty')
     else:
         setattr(mprms, '_similarity', True)
         _modules.append('similarity')

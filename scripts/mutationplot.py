@@ -1,3 +1,4 @@
+#/usr/bin/env python
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,26 +19,6 @@ for filename in filenames:
     df = pd.DataFrame(dataf, columns=columnnames).astype(float)
 
 print df
-
-####################################
-## plot 1: diversity, nPool, nLib ##
-####################################
-if True:
-    plt.figure(1)
-
-    plt.subplot(311)
-    plt.plot(df['gen'], df['diversity'])
-    plt.title('diversity plot')
-
-    plt.subplot(312)
-    plt.plot(df['gen'], df['nPool'])
-    plt.title('nPool')
-
-    plt.subplot(313)
-    plt.plot(df['gen'], df['nLib'])
-    plt.title('nLib')
-
-    plt.show()
 
 ####################################
 ## plot 2: diversity, nPool, nLib ##

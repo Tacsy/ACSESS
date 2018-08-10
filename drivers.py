@@ -478,16 +478,16 @@ def SingleMutate(candidateraw):
             p = Chem.MolFromSmarts('[h]@&=*(@*)@[h]')
             matches = candidate.GetSubstructMatches(p)
         except RuntimeError:
-            stats['nAddFusionRingFail'] += 1
+            stats['nAddArRingFail'] += 1
         else:
             if matches:
-                stats['nAddFusionRing'] += 1
+                stats['nAddArRing'] += 1
                 match = random.choice(matches)
                 try:
                     candidate = mutate.AddFusionRing(candidate, match)
                     return candidate
                 except MutateFail:
-                    stats['nAddFusionRingFail'] += 1
+                    stats['nAddArRingFail'] += 1
 
     if not change:
         stats['nNoMutation'] += 1

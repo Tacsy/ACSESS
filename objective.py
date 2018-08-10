@@ -186,7 +186,7 @@ class NeighborhoodMaximinSelector(object):
 
     @staticmethod
     def NormCoords(coords, templib):
-        if distance.NormCoords:
+        if distance.normCoords:
             coords = coords / distance.GetStdDevs(templib)
         return coords
 

@@ -14,9 +14,11 @@ import mongoserver
 import output
 
 metric = None
-NormCoords = True
+normCoords = True
 extendCoords = False
-extendVariance = 1.0
+extender = lambda mol:[]
+extender.__name__='extender'
+extendVariance = []
 dimRed=0
 
 '''
@@ -69,28 +71,13 @@ def SetCoords(mol):
 
         # this would be a good position for a coordinate extension.
         if extendCoords:
-            ExtendCoords(mol, coord)
+            extension = extender(mol)
+            coord = np.append(coord, extension)
 
         coord = np.nan_to_num(coord)
         SetListProp(mol, 'coords', coord)
     return np.array(coord)
 
-def ExtendCoords(mol, coord):
-    if True:
-        dco = np.nan
-        # add the distance between the C=O groups
-        Chem.Kekulize(mol, True)
-        dx = "O=C{}C=O"
-        D = [ (i, Chem.MolFromSmarts(dx.format("*=*-"*i))) for i in range(5) ]
-        for d, pattern in D:
-           if mol.HasSubstructMatch(pattern):
-               dco = d
-        if dco is None:
-            print Chem.MolToSmiles(mol)
-            #raise Exception('not a valid molecule')
-            print 'not a valid molecule for coord extension'
-        coord.append(dco)
-    return coord
 
 # Drive MPI coordinate calculation
 def ScatterCoords(mols):
@@ -222,7 +209,11 @@ def HandleMolCoords(mols, std_dev=None, norm=True, _noDimRed=None):
         coords = (coords - avgs) / std_dev
 
     if extendCoords and extendVariance:
-        coords[:, -1] = coords[:, -1] * extendVariance
+        j = len(coords[0]) - len(extendVariance)
+        print coords[0]
+        for i, ivariancefactor in enumerate(extendVariance):
+            coords[:, j+i] = coords[:, j+i] * extendVariance[i]
+        #coords[:, -1] = coords[:, -1] * extendVariance
 
     if True:
         import pickle
@@ -243,7 +234,7 @@ def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
     the set every 1000 steps
     '''
 
-    passMols, coords = HandleMolCoords(mols, norm=NormCoords)
+    passMols, coords = HandleMolCoords(mols, norm=normCoords)
     print "coords[0]", coords[0]
     #if # of mols is smaller than # of mols selected, just keep all of them
     if len(mols) <= nMol:

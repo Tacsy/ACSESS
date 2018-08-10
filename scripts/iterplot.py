@@ -1,3 +1,4 @@
+#/usr/bin/env python
 
 from rdkit import Chem
 import os
