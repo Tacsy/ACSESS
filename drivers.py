@@ -32,6 +32,8 @@ KeepNoGeomPool = True
 
 ##### other variables
 maxPool = 1000
+EdgeLen = 10
+EdgeRatio = 0.1
 
 debug = False
 
@@ -53,8 +55,8 @@ def DriveMutations(lib):
     newmols = []
     for i in xrange(min(mprms.nCross, len(lib) - 1)):
         try:
-            if i < mprms.nCross * mprms.EdgeRatio and mprms.EdgeLen > 0:
-                mol1 = random.choice(lib[:mprms.EdgeLen])
+            if i < mprms.nCross * EdgeRatio and EdgeLen > 0:
+                mol1 = random.choice(lib[:EdgeLen])
                 mol2 = random.choice(lib + newmols)
             else:
                 mol1 = random.choice(lib + newmols)
@@ -76,8 +78,8 @@ def DriveMutations(lib):
     print "mutating...",
     sys.stdout.flush()
     for i in xrange(mprms.nMut):
-        if i < mprms.nMut * mprms.EdgeRatio and mprms.EdgeLen > 0:
-            candidate = Chem.Mol(random.choice(lib[:mprms.EdgeLen]))
+        if i < mprms.nMut * EdgeRatio and EdgeLen > 0:
+            candidate = Chem.Mol(random.choice(lib[:EdgeLen]))
         else:
             candidate = Chem.Mol(random.choice(lib + newmols))
         try:

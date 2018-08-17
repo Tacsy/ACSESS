@@ -27,16 +27,15 @@ SAScore = 0.0
 
 DefaultFilters['Too big'] = NewFilter('Too big')
 
-
 def TooBig(mol):
     global maxWeight
     if MxAtm > 0:
-        if mol.GetNumHeavyAtoms() > MxAtm: return True
+        if mol.GetNumHeavyAtoms() > MxAtm:
+            return 'Too Big'
     if maxWeight > 0:
         if Descriptors.MolWt(mol) > maxWeight:
             return True
     return False
-
 
 DefaultFilters['Too big'].SetFilterRoutine(TooBig)
 

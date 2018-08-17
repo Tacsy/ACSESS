@@ -50,9 +50,6 @@ def Initialize():
         mprms.restart = False
     if not hasattr(mprms, 'cellDiversity'):
         mprms.cellDiversity = False
-    mprms.MxAtm = 50
-    mprms.EdgeRatio = 0.1
-    mprms.EdgeLen = 10
 
     # Decide which modules have to be imported:
     # The following modules will always be loaded:
@@ -170,7 +167,7 @@ def StartLibAndPool(restart):
         lib = mprms.seedLib
         if nSeed > 0:
             lib = lib[:nSeed]
-            lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
+        lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
         if len(lib) == 0:
             raise ValueError, "Seedlib is empty."
         print "Seeding with mprms.seedlib"

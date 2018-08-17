@@ -674,7 +674,9 @@ newfilt.SetFilterPattern(Chem.MolFromSmarts('[!a][N+](=O)[O-]'))
 AllFilters['Non-aromatic nitro'] = newfilt
 
 newfilt = NewPatternFilter('Non-aromatic halogen')
-newfilt.SetFilterPattern(Chem.MolFromSmarts('[!c][F,Cl,Br,I]'))
+#newfilt.SetFilterPattern(Chem.MolFromSmarts('[!c][F,Cl,Br,I]'))
+# Jos changed it to include also aliphatic halogens:
+newfilt.SetFilterPattern(Chem.MolFromSmarts('[!#6][F,Cl,Br,I]'))
 AllFilters['Non-aromatic halogen'] = newfilt
 
 newfilt = NewPatternFilter('Hetero-aromatic halogen')

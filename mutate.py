@@ -26,11 +26,13 @@ def Init():
     halogens = [9, 17, 35, 53]
 
     #do intersection and difference
-    Elements = set(elements) - set(halogens)
-    Halogens = set(elements) & set(halogens)
+    halogens = set(elements) & set(halogens)
+    elements = set(elements) - set(halogens)
     #change from set to list
-    Elements = list(Elements)
-    Halogens = list(Halogens)
+    elements = list(elements)
+    halogens = list(halogens)
+    print "elements:", elements
+    print "halogens:", halogens
 
 
 ###############################################################################
@@ -278,6 +280,7 @@ def SwitchAtom(mol, atom):
         raise MutateFail(mol, 'protected or grouped atom passed to switchatom')
 
     changed = False
+    neighbors=list(atom.GetNeighbors())
 
     # # # # # # # # # # # # #
     # from Filters import OptSulfone
@@ -309,24 +312,25 @@ def SwitchAtom(mol, atom):
     # # # # # # # # # # # # # #
     #Special cases for Nitro groups and halogens,
     #which can only be on aromatic rings
-    #neighbors=list(atom.GetAtoms())
     #if (  atom.GetExplicitValence()==1
     #      and neighbors[0].IsAromatic() ):
 
     # Add a halogen, if possible
-    #    if (len(Halogens)>0
-    #          and random.random()>0.6
-    #          and neighbors[0].GetAtomicNum()==6):
-    #        CanAddHalogen=True
-    #        nextneighbors=neighbors[0].GetAtoms()
-    #        for nb in nextneighbors:
-    #            if (  nb.GetAtomicNum() != 6
-    #                  and nb.GetIdx() != atom.GetIdx()):
-    #                CanAddHalogen=False
-    #                break
-    #        if CanAddHalogen:
-    #            atom.SetAtomicNum( random.choice(Halogens))
-    #            return
+    # we only add halogens when neighbor and neighbor-neighbor only C
+    if atom.GetExplicitValence()==1:
+        if (len(halogens)>0
+        and random.random()>0.6
+        and neighbors[0].GetAtomicNum()==6):
+            CanAddHalogen=True
+            nextneighbors=neighbors[0].GetNeighbors()
+            for nb in nextneighbors:
+                if (  nb.GetAtomicNum() != 6
+                      and nb.GetIdx() != atom.GetIdx()):
+                    CanAddHalogen=False
+                    break
+            if CanAddHalogen:
+                atom.SetAtomicNum( random.choice(halogens))
+                return
 
     # If not a halogen, maybe make a nitro group
     #    if random.random() < 0.15:

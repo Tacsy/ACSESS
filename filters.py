@@ -221,7 +221,8 @@ class NewFilter(object):
     def __call__(self, mol):
         filtered = self.function(mol)
         if filtered:
-            if type(filtered) == bool or filtered == 1: return self.name
+            if type(filtered) == bool or filtered == 1:
+                return self.name
             else: return filtered
         else: return 0
 
