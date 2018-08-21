@@ -6,6 +6,8 @@ from rdkit.Chem import AllChem
 
 from molfails import MutateFail
 from rdkithelpers import *
+
+import mprms
 '''
 This filter.py contains all the possible filters in the previous version of
 ACSESS, in order to make the code in the cleaner way.
@@ -74,9 +76,15 @@ def Init():
             if extrafilter in ['Qiu', 'qiu']:
                 ActiveFilters['qiu1'] = ExtraFilters['qiu1']
                 ActiveFilters['qiu2'] = ExtraFilters['qiu2']
+                print "qiu filters added".format(extrafilter)
             else:
-                ActiveFilters[extrafilter] = ExtraFilters[extrafilter]
-            print "{} added".format(extrafilter)
+                if extrafilter in ExtraFilters:
+                    ActiveFilters[extrafilter] = ExtraFilters[extrafilter]
+                    print "{} added from ExtraFilters".format(extrafilter)
+                else:
+                    ActiveFilters[extrafilter] = NewFilter(extrafilter)
+                    ActiveFilters[extrafilter].SetFilterRoutine(getattr(mprms, extrafilter))
+                    print "{} added from user input".format(extrafilter)
     if debug:
         for AcFil in sorted(ActiveFilters.keys()):
             print AcFil

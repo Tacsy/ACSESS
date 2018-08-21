@@ -20,7 +20,7 @@ def Initialize():
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
     isinputfunction= lambda var: hasattr(var, '__name__') and var.__name__ in [
-            'myfilter', 'fitnessfunction', 'extender']
+            'fitnessfunction', 'extender']
     normalvar =  lambda var: type(var) in primitiveTypes or isinputfunction(var)
     notbuiltin = lambda var: not var.startswith('_')
 
@@ -168,9 +168,9 @@ def StartLibAndPool(restart):
         if nSeed > 0:
             lib = lib[:nSeed]
         lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
+        print "read seedLib with {:d} molecules from input".format(len(lib))
         if len(lib) == 0:
             raise ValueError, "Seedlib is empty."
-        print "Seeding with mprms.seedlib"
 
     #case 4: predefined as (benzene + cyclohexane)
     else:
