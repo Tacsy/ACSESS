@@ -20,6 +20,7 @@ from helpers import Compute3DCoords, xyzfromrdmol
 from CINDES.utils.molecule import SmiMolecule
 table = None
 run = None
+minimize = False  #Minimizing or maximizing the objective function?
 RDGenConfs = False
 pool_multiplier=10
 
@@ -27,12 +28,24 @@ def Init():
     global run, table
     from CINDES.INDES.inputreader import readfile
     from CINDES.INDES.procedures import BaseRun
-    # here maybe a Run object can be created?
-    param = readfile(open('INPUT', 'r'))
-    run = BaseRun(**param)
-    print run
     from CINDES.INDES.procedures import set_table
+
+    # 1. read INPUT file
+    param = readfile(open('INPUT', 'r'))
+
+    # 2. make run object
+    run = BaseRun(**param)
+
+    # 3. set optimum from mprms file so they are automatically similar
+    if minimize:
+        run.optimum = 'minimum'
+    else:
+        run.optimum = 'maximum'
+
+    # 4. set table
     table = set_table(run)
+
+    print run
     return run
 
 def calculate(rdmols, QH2=False, gen=0):

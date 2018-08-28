@@ -21,6 +21,8 @@ FixedCutoff = False
 InitialCutoff = 0.0
 TakeFittest = 1
 SaturateAt = 0.8
+maxRemove = 0.2
+minNMol   = 100
 NeighborhoodMaximin=True
 NeighborhoodFactor = 0.75
 def fitnessfunction(): pass
@@ -84,12 +86,50 @@ def UpdateObjective(mylib, gen=0):
     return
 
 
+def SetCutOff(gen):
+    nGen = mprms.nGen
+    if gen > SaturateAt * nGen:
+        cutoff = TargetScore
+    else:
+        cutoff = InitialCutoff + (TargetScore - InitialCutoff) * (
+            gen * 1.0) / (nGen * SaturateAt)
+    return cutoff
+
+
+def ApplyCutOff(totallib, gen):
+
+    Nbefore = len(totallib)
+    cutoff = SetCutOff(gen)
+    output.obstats['CutOff'] = cutoff
+    print "current cutoff:", cutoff, 'minsign:', minsign
+
+    # first application of cutoff
+    newpool = [ mol for mol in totallib
+                if mol.GetDoubleProp('Objective') * minsign <= cutoff * minsign
+              ]
+    Nafter = len(newpool)
+    
+    # apply correction to cutoff if cutoff is too harsh
+    if minNMol:
+        # don't let the total number of mols drop below a certain number:
+        print "cutoff not applied. Nmol should stay at {:d}.".format(minNMol)
+        if Nbefore>minNMol and Nafter<minNMol:
+            newpool = totallib[:minNMol]
+    if maxRemove:
+        if Nbefore-Nafter > maxRemove * Nbefore:
+            print "cutoff would remove more than {:d}%.".format(int(100*maxRemove))
+            newpool = totallib[:-int(Nbefore * maxRemove)]
+
+    if Nafter == 0:
+        raise ValueError('No compounds left after cutoff!')
+    return newpool
+
 ######################################################################
 # Optimization routine: rank all compounds in terms of objective function
 # Remove compounds below the threshold
 # Returns both picked compounds (as library) and unpicked compounds (as pool)
 def EvaluateObjective(totallib, gen):
-    nGen = mprms.nGen
+
     NumIn = len(totallib)
 
     # 0. Remove Duplicates
@@ -103,24 +143,12 @@ def EvaluateObjective(totallib, gen):
         key=lambda x: x.GetDoubleProp('Objective'), reverse=not minimize)
 
     # 3. Cut compounds below cutoff
-    if gen > SaturateAt * nGen:
-        cutoff = TargetScore
-    else:
-        cutoff = InitialCutoff + (TargetScore - InitialCutoff) * (
-            gen * 1.0) / (nGen * SaturateAt)
-    newpool = [ mol for mol in totallib
-                if mol.GetDoubleProp('Objective') * minsign <= cutoff * minsign
-              ]
+    newpool = ApplyCutOff(totallib, gen)
 
     # 4. Log results 
     NumOut = len(newpool)
-    print "current cutoff:", cutoff, 'minsign:', minsign
-    if NumOut == 0:
-        raise ValueError('No compounds left after cutoff!')
-    print 'Removed', NumIn - NumOut, 'compounds using objective function threshold'
-
+    print 'Removed {:d} compounds using objective function threshold'.format(NumIn - NumOut)
     output.obstats.clear()
-    output.obstats['CutOff'] = cutoff
     output.obstats['NumIn']=NumIn
     output.obstats['NumOut']=NumOut
 

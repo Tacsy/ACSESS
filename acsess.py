@@ -64,11 +64,11 @@ def evolve():
         # 3. FILTERS
         newlib = dr.DriveFilters(newlib, Filtering, GenStrucs)
 
-        # 3b. When necessary FilterPool is switching is just set on
+        # 3b. Once Filtering/GenStrucs is switched on Pool has to be filtered too:
         pool = dr.DrivePoolFilters(pool, Filtering, GenStrucs, Tautomerizing,
                                    gen)
 
-        # 4. OBJECTIVE
+        # 4. OBJECTIVE EVALUATION
         if mprms.optimize:
             print "acsess.py len(newlib, pool):{} {}".format(
                 len(newlib), len(pool))
@@ -125,6 +125,16 @@ def evolve():
 
 if __name__ == "__main__":
     import sys
+    import signal
+
+    def signal_term_handler(signal, frame):
+        print 'got kill signal!'
+        output.PrintTimings()
+        output.PrintStats()
+        output.PrintTotalTimings()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, signal_term_handler)
 
     class Unbuffered(object):
         def __init__(self, stream):
@@ -148,7 +158,14 @@ if __name__ == "__main__":
             initiate()
 
         def evolve(self):
-            evolve()
+            try:
+                evolve()
+            except KeyboardInterrupt:
+                print "catched KeyboardInterrupt!"
+                output.PrintTimings()
+                output.PrintStats()
+                output.PrintTotalTimings()
+                sys.exit(0)
 
     run = RunACSESS()
     run.evolve()

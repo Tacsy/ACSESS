@@ -72,7 +72,7 @@ def PrintStat(nColumn=4, flush=True):
         if i == 6: statsFile.write("|")
     statsFile.write("\n")
     if flush:
-        sys.stdout.flush()
+        statsFile.flush()
         stats.clear()
     return
 
@@ -83,6 +83,7 @@ def PrintObjectiveStat(nColumn=4, flush=True):
         fitnessFile.write(" {:4d} ".format(obstats[key]))
     for function in (np.average, np.min, np.max):
         fitnessFile.write(" {:14.7f} ".format(function(obstats['fvals'])))
+    fitnessFile.write(" {:14.7f}".format(obstats['CutOff']))
     fitnessFile.write("\n")
     if flush:
         fitnessFile.flush()
