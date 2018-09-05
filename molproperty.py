@@ -12,6 +12,7 @@ import math
 from collections import defaultdict
 
 import os
+
 '''
 this module include various previous modules that corresponding to molecular
 property calculation, including:
@@ -20,12 +21,45 @@ property calculation, including:
     SMCM.py
     MQN.py
 '''
-
+maxBonds = 7
 
 def AutoCorr2D(mol):
     from rdkit.Chem import rdMolDescriptors
     vector = rdMolDescriptors.CalcAUTOCORR2D(mol)
     return vector
+
+def AutoCorrMordred(mol):
+    from mordred import Calculator, Autocorrelation
+    calc = Calculator()
+    # ATS, ATSC, AATS, AATSC ?
+    descriptor = Autocorrelation.ATS
+    calc.register(descriptor)
+    res = calc(mol)
+    res = res.fill_missing()
+    # Z: atomic num, pe=pauling electronegativity, p=polarizability, x=unweighted(identity), v=vdw-volume
+    # dv= nValence
+    props= ['Z', 'pe', 'p', 'dv' ]
+    keys = [ 'ATS{d}{p}'.format(d=d, p=p) for d in range(maxBonds+1) for p in props ]
+    #print "keys:", keys
+    res = { k:v for k, v in res.asdict().iteritems() if k in keys }
+    for key in keys:
+        if not key in res:
+            print key
+    #print "res:", res
+    vector = [ value for (key, value) in sorted(res.items())]
+    #print "len(vector):", len(vector)
+    return vector
+
+def MoreauBrotoPyBioMed(mol):
+    #from PyBioMed import Pymolecule
+    #_mol = Pymolecule.PyMolecule()
+    #smi = Chem.MolToSmiles(mol)
+    #_mol.ReadMolFromSmile('C(c1ccccc1)C(C)O')
+    #vector = _mol.GetMoreauBroto().values()
+    from PyBioMed.PyMolecule.moreaubroto import GetMoreauBrotoAuto
+    vector = GetMoreauBrotoAuto(mol)
+    # vector is a dict so return it as a list sorted based on the dict keys
+    return [ value for (key, value) in sorted(vector.items())]
 
 
 ############################################################
@@ -54,7 +88,7 @@ def AssignAtomicPolarizability(mol):
             if nBonds == 4:
                 atom.SetDoubleProp('polarizability', 1.294)
             elif nBonds == 2:
-                GetAtoms.SetDoubleProp('polarizability', 1.393)
+                atom.SetDoubleProp('polarizability', 1.393)
             elif nBonds == 3:
                 if atom.GetNumExplicitHs() + atom.GetNumImplicitHs() > 0:
                     atom.SetDoubleProp('polarizability', 1.428)
@@ -214,7 +248,7 @@ def AssignTSEI(mol):
 # Method first described in Moreau and Broto. Nouv. J. Chim.1980, 4, 757-764.
 # A more recent reference is dx.doi.org/10.1002/poc.610061008
 ############################################################
-def AutoCorreationVector(mol, props, maxBonds):
+def AutoCorrelation(mol, props):
 
     atoms = mol.GetAtoms()
 
@@ -226,7 +260,7 @@ def AutoCorreationVector(mol, props, maxBonds):
     #Retrive all properties for each atom
     #atomProps[i][j] gives property j for itom i
     atomProps = np.array(
-        [[atom.GetProp(prop) for prop in props] for atom in atoms])
+        [[atom.GetDoubleProp(prop) for prop in props] for atom in atoms])
 
     #construct autocorrelation vector
     nAtoms = mol.GetNumAtoms()
@@ -254,6 +288,27 @@ def AutoCorreationVector(mol, props, maxBonds):
 
     return ACVector
 
+def MoreauBrotoACVector(mol0):
+
+    mol = Chem.AddHs(mol0)
+    AssignTSEI(mol)
+    AssignAtomicPolarizability(mol)
+    mol.ComputeGasteigerCharges()
+    for atom in mol.GetAtoms():
+        atom.SetDoubleProp('anum', atom.GetAtomicNum())
+        atom.SetDoubleProp('one',1)
+
+    props = ['TSEI', 'anum', 'one', '_GasteigerCharge', 'polarizability']
+    result = np.array( AutoCorrelation(mol, props) )
+
+    #Normalize by typical carbon values
+    result[0,:]=result[0,:]/(2.3*2.3)
+    result[1,:]=result[1,:]/36.0
+    result[3,:]=result[3,:]/.005
+    result[4,:]=result[4,:]/(1.2*1.2)
+
+    result.shape=( np.product(result.shape),)
+    return result
 
 ############################################################
 # Calculation of Molecular Quantum Numbers as given by Nguyen
@@ -261,12 +316,59 @@ def AutoCorreationVector(mol, props, maxBonds):
 # it is also a built-in function RDkit
 ############################################################
 
+# C
+# F 
+# Cl x
+# Br x
+# I x
+# S
+# P x
+# AcyclicN
+# CycN
+# AcyclicO
+# CycO
+# #Heavy
+# Acyclic\n1-bond
+# Acyclic\n2-bond
+# Acyclic\n3-bond x
+# Cyclic\n1-bond
+# Cyclic\n2-bond
+# Cyclic\n3-bond x
+# Rot\nBonds
+# HBond\nAccSites
+# HBond\nAccAtoms x
+# HBond\nDonSites
+# HBond\nDonAtoms x
+# NegCharge x
+# PosCharge x
+# Acyclic\nmono-valent
+# Acyclic\ndivalent
+# Acyclic\ntrivalent
+# Acyclic\ntetravalent
+# Cyclic\ndivalent
+# Cyclic\ntrivalent
+# Cyclic\ntetravalent
+# 3-rings x
+# 4-rings x
+# 5-rings
+# 6-rings
+# 7-rings
+# 8-rings
+# 9-rings
+# >10-rings
+# Fused-ring\natoms
+# Fused-ring\nbonds
 
+#_MQNProps = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+#             22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 ,38, 39, 40, 41]
+_MQNProps = [ 0, 1, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 21,
+             23, 26, 27, 28, 29, 30, 31, 34, 35, 36, 37, 38, 39, 40, 41]
 def CalcMQNs(mol):
     molAddH = Chem.AddHs(mol)
-    MQNs = AllChem.MQNs_(molAddH)
-
-    return MQNs
+    MQNs = np.array(AllChem.MQNs_(molAddH))
+    # here the possibility to reduce the MQN since some numbers are not relevant
+    MQN = MQNs[_MQNProps]
+    return MQN
 
 
 ############################################################

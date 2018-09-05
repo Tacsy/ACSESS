@@ -26,11 +26,13 @@ def Init():
     halogens = [9, 17, 35, 53]
 
     #do intersection and difference
-    Elements = set(elements) - set(halogens)
-    Halogens = set(elements) & set(halogens)
+    halogens = set(elements) & set(halogens)
+    elements = set(elements) - set(halogens)
     #change from set to list
-    Elements = list(Elements)
-    Halogens = list(Halogens)
+    elements = list(elements)
+    halogens = list(halogens)
+    print "elements:", elements
+    print "halogens:", halogens
 
 
 ###############################################################################
@@ -278,6 +280,7 @@ def SwitchAtom(mol, atom):
         raise MutateFail(mol, 'protected or grouped atom passed to switchatom')
 
     changed = False
+    neighbors=list(atom.GetNeighbors())
 
     # # # # # # # # # # # # #
     # from Filters import OptSulfone
@@ -309,24 +312,25 @@ def SwitchAtom(mol, atom):
     # # # # # # # # # # # # # #
     #Special cases for Nitro groups and halogens,
     #which can only be on aromatic rings
-    #neighbors=list(atom.GetAtoms())
     #if (  atom.GetExplicitValence()==1
     #      and neighbors[0].IsAromatic() ):
 
     # Add a halogen, if possible
-    #    if (len(Halogens)>0
-    #          and random.random()>0.6
-    #          and neighbors[0].GetAtomicNum()==6):
-    #        CanAddHalogen=True
-    #        nextneighbors=neighbors[0].GetAtoms()
-    #        for nb in nextneighbors:
-    #            if (  nb.GetAtomicNum() != 6
-    #                  and nb.GetIdx() != atom.GetIdx()):
-    #                CanAddHalogen=False
-    #                break
-    #        if CanAddHalogen:
-    #            atom.SetAtomicNum( random.choice(Halogens))
-    #            return
+    # we only add halogens when neighbor and neighbor-neighbor only C
+    if atom.GetExplicitValence()==1:
+        if (len(halogens)>0
+        and random.random()>0.6
+        and neighbors[0].GetAtomicNum()==6):
+            CanAddHalogen=True
+            nextneighbors=neighbors[0].GetNeighbors()
+            for nb in nextneighbors:
+                if (  nb.GetAtomicNum() != 6
+                      and nb.GetIdx() != atom.GetIdx()):
+                    CanAddHalogen=False
+                    break
+            if CanAddHalogen:
+                atom.SetAtomicNum( random.choice(halogens))
+                return
 
     # If not a halogen, maybe make a nitro group
     #    if random.random() < 0.15:
@@ -373,6 +377,10 @@ def AddBond(mol):
         atom1 = random.choice(atoms)
         atom2 = random.choice(atoms)
         if atom1 == atom2: continue
+        # new rather strict criteria;
+        if atom1.IsInRing() and atom2.IsInRing():
+            #print "continue because both atoms in ring"
+            continue
         # Only make rings of size 5-7
         if not (5 <= len(
                 Chem.GetShortestPath(mol, atom1.GetIdx(), atom2.GetIdx())) <=
@@ -565,7 +573,7 @@ def AddArRing(mol, bond):
         print "wrong kind of atom given"
         raise MutateFail
 
-    print "in AddArRing!", Chem.MolToSmiles(mol)
+    #print "in AddArRing!", Chem.MolToSmiles(mol)
 
     def AwithLabel(label):
         return filter(lambda atom: atom.HasProp(label),
@@ -582,7 +590,7 @@ def AddArRing(mol, bond):
         mol.AddBond(AwithLabel('buta2'), AwithLabel('ah2'), bondorder[1])
     except RuntimeError:
         raise MutateFail
-    print "Finished AddArRing!", Chem.MolToSmiles(mol)
+    #print "Finished AddArRing!", Chem.MolToSmiles(mol)
     return mol
 
 def AddFusionRing(mol, match):
@@ -602,7 +610,7 @@ def AddFusionRing(mol, match):
         mol.AddBond(AwithLabel('propane2'), AwithLabel('ah2'), bondorder[1])
     except RuntimeError:
         raise MutateFail
-    print "Finished AddFusionRing!", Chem.MolToSmiles(mol)
+    #print "Finished AddFusionRing!", Chem.MolToSmiles(mol)
     return mol
 
 

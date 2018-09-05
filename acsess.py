@@ -13,17 +13,20 @@ sys.path.append('.')
 import mprms
 import init
 import drivers as dr
+import celldiversity as cd
 import output
 from output import stats
 import objective
 from helpers import DumpMols, FinishSelection
 from distance import AveNNDistance
 from similarity import NNSimilarity
-iterhead = "\n-------------------- Iteration {0} ----------------\n"
 
+# set global variables:
+_iterhead = "\n-------------------- Iteration {0} ----------------\n"
+_gridAssign = None
 
 def initiate():
-    global startiter, lib, pool
+    global startiter, lib, pool, _gridAssign
     ##################################
     # 1. read input and initialize
     ##################################
@@ -32,11 +35,15 @@ def initiate():
     # 2. Get starting library
     ##################################
     startiter, lib, pool = init.StartLibAndPool(mprms.restart)
+
+    if mprms.cellDiversity:
+        siml,mylib,_gridAssign = cd.GridDiversity( [], lib+pool )
+        #wrotepool=set( m.GetData('isosmi') for m in mylib+pool )
     return
 
 
 def evolve():
-    global startiter, lib, pool, iterhead
+    global startiter, lib, pool, _iterhead, _gridAssign
 
     ###################################################
     ##########                              ###########
@@ -48,7 +55,7 @@ def evolve():
         Tautomerizing, Filtering, GenStrucs = dr.SetIterationWorkflow(gen)
 
         # 1. PRELOGGING
-        print iterhead.format(gen)
+        print _iterhead.format(gen)
         stats.update({'gen': gen, 'nPool': len(pool), 'nLib': len(lib)})
 
         # 2.MUTATIONS AND CROSSOVERS
@@ -70,30 +77,40 @@ def evolve():
             pool = dr.ExtendPool(pool, lib, newlib)
 
         # 5. SELECTION
-        if mprms.optimize:
-            oldN = len(pool)
-            lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
-            stats['nUnFit'] = oldN - len(pool)
-        elif len(pool) > mprms.subsetSize:
-            #lib = random.sample(pool, mprms.subsetSize)
-            lib = dr.DriveSelection(pool, mprms.subsetSize)
+        siml = None
+        if mprms.cellDiversity:
+            if mprms.optimize:
+                siml, lib, _gridAssign = cd.GridDiversity(lib, newlib, molgrid=_gridAssign)
+            else:
+                siml, lib, _gridAssign = cd.GridDiversity_JITFilter(lib, newlib, molgrid=_gridAssign)
         else:
-            lib = [mol for mol in pool]
+            if mprms.optimize:
+                oldN = len(pool)
+                lib, pool = objective.SelectFittest(pool, mprms.subsetSize, gen)
+                stats['nUnFit'] = oldN - len(pool)
+            elif len(pool) > mprms.subsetSize:
+                lib = dr.DriveSelection(pool, mprms.subsetSize)
+            else:
+                lib = [mol for mol in pool]
         FinishSelection(lib)
-        if len(lib) == 0: raise RuntimeError('no molecules left')
+        if len(lib) == 0:
+            raise RuntimeError('no molecules left')
 
         # 6. DIVERSITY IS:
-        #siml = NNSimilarity(lib)
-        if hasattr(mprms, 'metric'):
-            siml = AveNNDistance(lib)
-        else:
-            siml = NNSimilarity(lib)
+        if siml is None:
+            if mprms._similarity:
+                siml = NNSimilarity(lib)
+            else:
+                # library diversity should not be assessed by normalization of only
+                # the lib. so either no normalization or a normalization based on 
+                # the whole pool.
+                siml = AveNNDistance(lib, norm=False)
         print '\nLIBRARY DIVERSITY: ', siml
 
         # 7. POSTLOGGING
         with open('mylib.smi', 'w') as f:
-            for mol in lib:
-                f.write(Chem.MolToSmiles(mol) + '\n')
+            for i, mol in enumerate(lib):
+                f.write(Chem.MolToSmiles(mol) + ' {:d}\n'.format(i))
         if gen % mprms.writeInterval == 0 or gen == mprms.nGen - 1:
             DumpMols(lib, gen)
         DumpMols(pool)
@@ -107,6 +124,24 @@ def evolve():
 
 
 if __name__ == "__main__":
+    import sys
+
+    class Unbuffered(object):
+        def __init__(self, stream):
+            self.stream = stream
+
+        def writelines(self, datas):
+            self.stream.writelines(datas)
+            self.stream.flush()
+
+        def write(self, data):
+            self.stream.write(data)
+            self.stream.flush()
+
+        def __getattr__(self, attr):
+            return getattr(self.stream, attr)
+
+    sys.stdout = Unbuffered(sys.stdout)
 
     class RunACSESS(object):
         def __init__(self):

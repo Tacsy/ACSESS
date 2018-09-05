@@ -14,7 +14,13 @@ import mongoserver
 import output
 
 metric = None
-NormCoords = False
+normCoords = True
+extendCoords = False
+extender = lambda mol:[]
+extender.__name__='extender'
+extendVariance = []
+dimRed=0
+
 '''
 this module include various previous modules that corresponds to chemical space
 representation and selection, including:
@@ -38,12 +44,16 @@ def Init():
     global Coords
 
     # set coordination system
-    if metric == 'mqn':
+    if str(metric).lower() == 'mqn':
         from molproperty import CalcMQNs as Coords
     elif metric == 'autocorr':
-        from molproperty import MoreauBrotoACVec as Coords
-    elif metric == 'autocorr2D':
+        from molproperty import MoreauBrotoACVector as Coords
+    elif str(metric).lower() == 'autocorr2d':
         from molproperty import AutoCorr2D as Coords
+    elif str(metric) == 'AutoCorrMordred':
+        from molproperty import AutoCorrMordred as Coords
+    elif str(metric) == 'MoreauBroto':
+        from molproperty import MoreauBrotoPyBioMed as Coords
     elif metric is None:
         print 'No coordinate system set!, so Similarity measures will be used!'
     else:
@@ -58,6 +68,12 @@ def SetCoords(mol):
         coord = GetListProp(mol, 'coords')
     else:
         coord = Coords(mol)
+
+        # this would be a good position for a coordinate extension.
+        if extendCoords:
+            extension = extender(mol)
+            coord = np.append(coord, extension)
+
         coord = np.nan_to_num(coord)
         SetListProp(mol, 'coords', coord)
     return np.array(coord)
@@ -143,7 +159,15 @@ def GetStdDevs(mols):
     return std_dev
 
 
-def HandleMolCoords(mols, std_dev=None, norm=True):
+def HandleMolCoords(mols, std_dev=None, norm=True, _noDimRed=None):
+    ''' This function handles the coordinate settings
+
+    - coordinates are by default normalized
+    - coordinates can be reduced in dimensionality this is only done for the selection
+      procedure and cannot be used to calculate the aveNNDistance since the PCA covariance 
+      matrix differs every generation. Hence the _noDimRed keyword
+    - std_dev can be given or actually calculated
+    '''
     #assemble distance vectors
     if type(mols) == np.ndarray:
         coords = mols
@@ -153,17 +177,24 @@ def HandleMolCoords(mols, std_dev=None, norm=True):
         ScatterCoords(mols)
         coords = np.array([SetCoords(mol) for mol in mols])
 
+    # can we do a PCA reduction in the dimension of the coords?
+    if dimRed>0 and not _noDimRed:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=dimRed)
+        initial_shape = coords.shape
+        pca.fit(coords)
+        print "\tLeast explained variance:", pca.explained_variance_[-1]
+        coords = pca.transform(coords)
+        print "\tDimensionality reduction:", initial_shape, "to:", coords.shape
+
     #return coordinates according to normalization or not
-    if not norm:
-        return passMols, coords
-    else:
+    if norm is True:
         #normalize coordinates using given std_dev
         if std_dev is not None:
             avgs = np.average(coords, axis=0)
             if not (type(std_dev) == np.ndarray and std_dev.ndim == 1):
                 std_dev = GetStdDevs(std_dev)
 
-            return passMols, (coords - avgs) / std_dev
         #normalize coordinates by their std_dev
         else:
             try:
@@ -171,8 +202,25 @@ def HandleMolCoords(mols, std_dev=None, norm=True):
             except TypeError:
                 print coords
                 raise
-            std_dev = GetStdDevs(mols)
-            return passMols, (coords - avgs) / std_dev
+            if dimRed and not _noDimRed:
+                std_dev = GetStdDevs(coords)
+            else:
+                std_dev = GetStdDevs(mols)
+        coords = (coords - avgs) / std_dev
+
+    if extendCoords and extendVariance:
+        j = len(coords[0]) - len(extendVariance)
+        print coords[0]
+        for i, ivariancefactor in enumerate(extendVariance):
+            coords[:, j+i] = coords[:, j+i] * extendVariance[i]
+        #coords[:, -1] = coords[:, -1] * extendVariance
+
+    if True:
+        import pickle
+        with open('coords.p', 'wb') as f:
+            pickle.dump(coords, f)
+
+    return passMols, coords
 
 
 def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
@@ -185,7 +233,9 @@ def Maximin(mols, nMol, firstpick=None, startCoords=None, verbose=False):
     Prunes molecules that have no chance of being selected from 
     the set every 1000 steps
     '''
-    passMols, coords = HandleMolCoords(mols)
+
+    passMols, coords = HandleMolCoords(mols, norm=normCoords)
+    print "coords[0]", coords[0]
     #if # of mols is smaller than # of mols selected, just keep all of them
     if len(mols) <= nMol:
         if not passMols:
@@ -263,7 +313,7 @@ def SplitSpace(ids, coords):
     coords = np.array([coords[i] for i in ids])
     pcaDecomp = PCA(coords)
 
-    pc1 = np.real(np.dot(coords, pcadecomp.evecs[:, 0]))
+    pc1 = np.real(np.dot(coords, pcaDecomp.evecs[:, 0]))
     avg = sum(pc1) / len(ids)
     std_dev = np.sqrt(sum((pc1 - avg)**2) / len(ids))
 
@@ -335,7 +385,8 @@ def PCAMaximin(mols, nMol, nsplit=None, verbose=False):
 
     if verbose:
         print 'PCA/Maximin: using fast maximin to select compounds on region bound aries.'
-    b_set = FastMaximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
+    #b_set = FastMaximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
+    b_set = Maximin(cb, int(nMol * len(boundaryIDs) * 1.0 / len(mols)))
     pickset = [boundaryIDs[i] for i in b_set]
     startcoords = np.array([cb[i] for i in b_set])
 
@@ -379,12 +430,13 @@ def MPI_PCA_Maximin(MPISEND):
     return picks
 
 
-def AveNNDistance(mols, getsqrt=False, std_dev=None):
+def AveNNDistance(mols, getsqrt=False, std_dev=None, norm=True):
     '''
     Calculate diversity function (average nearest-neighbor distance)
     '''
-    passMols, coords = HandleMolCoords(mols, std_dev=std_dev)
+    passMols, coords = HandleMolCoords(mols, std_dev=std_dev, _noDimRed=True, norm=norm)
 
+    print "in AveNNDistance: coords:", coords.shape
     N = len(coords)
     #determine if distance matrix needs to be chunked or not
     if N > 2000:

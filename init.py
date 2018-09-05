@@ -19,8 +19,9 @@ def Initialize():
 
     # define which type of module attributes are allowed to be changed
     primitiveTypes = (str, float, bool, int, list, tuple, type(None))
-    isfilter   = lambda var: hasattr(var, '__name__') and var.__name__=='myfilter'
-    normalvar =  lambda var: type(var) in primitiveTypes or isfilter(var)
+    isinputfunction= lambda var: hasattr(var, '__name__') and var.__name__ in [
+            'fitnessfunction', 'extender']
+    normalvar =  lambda var: type(var) in primitiveTypes or isinputfunction(var)
     notbuiltin = lambda var: not var.startswith('_')
 
     def goodvar(var, mod):
@@ -47,43 +48,67 @@ def Initialize():
         mprms.optimize = False
     if not hasattr(mprms, 'restart'):
         mprms.restart = False
-    mprms.MxAtm = 50
-    mprms.EdgeRatio = 0.1
-    mprms.EdgeLen = 10
+    if not hasattr(mprms, 'cellDiversity'):
+        mprms.cellDiversity = False
 
     # Decide which modules have to be imported:
+    # The following modules will always be loaded:
     _modules = [
+        'acsess',
         'mutate',
         'filters',
         'Filters.DefaultFilters',
         'Filters.ExtraFilters',
+        'Filters.GDBFilters',
         'drivers',
         'rdkithelpers',
-        'output'
+        'output',
     ]
-    if hasattr(mprms, 'metric'):
+
+    # Here we decide wich other modules to load as well:
+    # set diversity framework: distance or similarity based.
+    if hasattr(mprms, 'metric') and not mprms.metric in ['', 'similarity']:
+        setattr(mprms, '_similarity', False)
         _modules.append('distance')
+        _modules.append('molproperty')
     else:
+        setattr(mprms, '_similarity', True)
         _modules.append('similarity')
+
+    # set diversity algorithm: Maximin or CellDiversity
+    if hasattr(mprms, 'cellDiversity') and mprms.cellDiversity is True:
+        _modules.append('celldiversity')
+
+    # set optimization algorithm. pure diversity or property-optimizing
     if mprms.optimize:
         _modules.append('objective')
 
+    # check if the CINDES program will be used to calculate the property values
+    if hasattr(mprms, 'CINDES_interface') and mprms.CINDES_interface is True:
+        _modules.append('QCindes')
+
     # Import the modules / Set the global variables / Initiate modules
     for module in _modules:
+        # module names are relative so add a dot
+        rmodule = '{}'.format(module)
+        # and import them relative the our ACSESS package:
+        _Mod = importlib.import_module(rmodule, package='ACSESS')
         # get normal global variables of the modules
-        _Mod = importlib.import_module(module)
         modvars = [var for var in dir(_Mod) if goodvar(var, _Mod)]
         for modvar in modvars:
             # check if mprms has same attr:
             if hasattr(mprms, modvar):
+                attrvalue = getattr(mprms, modvar)
                 #than change it:
-                print "set attr: {}.{}".format(module, modvar)
-                setattr(_Mod, modvar, getattr(mprms, modvar))
+                setattr(_Mod, modvar, attrvalue)
+                if len(repr(attrvalue))>41:
+                    print "set attr: {:_>22}.{:20}".format(module, modvar)
+                else:
+                    print "set attr: {:_>22}.{:_<19} : {}".format(module, modvar, attrvalue)
 
-        # initialize module if it has a Init function
+        # initialize module if it has an Init function
         if hasattr(_Mod, 'Init') and callable(getattr(_Mod, 'Init')):
             getattr(_Mod, 'Init')()
-
 
     return
 
@@ -142,10 +167,10 @@ def StartLibAndPool(restart):
         lib = mprms.seedLib
         if nSeed > 0:
             lib = lib[:nSeed]
-            lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
+        lib = [Chem.MolFromSmiles(mol, sanitize=False) for mol in lib]
+        print "read seedLib with {:d} molecules from input".format(len(lib))
         if len(lib) == 0:
             raise ValueError, "Seedlib is empty."
-        print "Seeding with mprms.seedlib"
 
     #case 4: predefined as (benzene + cyclohexane)
     else:
@@ -212,5 +237,8 @@ def StartLibAndPool(restart):
             dogenstrucs   = startiter>=drivers.startGenStruc
             lib = drivers.DriveFilters(lib, dostartfilter, dogenstrucs)
             pool = drivers.DriveFilters(pool, dostartfilter, dogenstrucs)
+
+    if len(lib)>mprms.subsetSize + mprms.edgeLen:
+        raise NotImplementedError('len startinglibrary larger than maxSubsetSize')
 
     return startiter, lib, pool

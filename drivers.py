@@ -32,6 +32,8 @@ KeepNoGeomPool = True
 
 ##### other variables
 maxPool = 1000
+EdgeLen = 10
+EdgeRatio = 0.1
 
 debug = False
 
@@ -53,8 +55,8 @@ def DriveMutations(lib):
     newmols = []
     for i in xrange(min(mprms.nCross, len(lib) - 1)):
         try:
-            if i < mprms.nCross * mprms.EdgeRatio and mprms.EdgeLen > 0:
-                mol1 = random.choice(lib[:mprms.EdgeLen])
+            if i < mprms.nCross * EdgeRatio and EdgeLen > 0:
+                mol1 = random.choice(lib[:EdgeLen])
                 mol2 = random.choice(lib + newmols)
             else:
                 mol1 = random.choice(lib + newmols)
@@ -76,8 +78,8 @@ def DriveMutations(lib):
     print "mutating...",
     sys.stdout.flush()
     for i in xrange(mprms.nMut):
-        if i < mprms.nMut * mprms.EdgeRatio and mprms.EdgeLen > 0:
-            candidate = Chem.Mol(random.choice(lib[:mprms.EdgeLen]))
+        if i < mprms.nMut * EdgeRatio and EdgeLen > 0:
+            candidate = Chem.Mol(random.choice(lib[:EdgeLen]))
         else:
             candidate = Chem.Mol(random.choice(lib + newmols))
         try:
@@ -239,12 +241,12 @@ def DriveSelection(pool, subsetSize):
     print "selecting...",
     sys.stdout.flush()
     #1. select maximin algorithm.
-    if hasattr(mprms, 'metric'):
-        from distance import Maximin
-        lib = Maximin(pool, mprms.subsetSize)
-    else:
+    if mprms._similarity:
         from similarity import FPMaximin
         lib = FPMaximin(pool, mprms.subsetSize)
+    else:
+        from distance import Maximin
+        lib = Maximin(pool, mprms.subsetSize)
     return lib
 
 
@@ -448,13 +450,13 @@ def SingleMutate(candidateraw):
     # 7. Add aromatic ring to a bond
     if random.random() < p_AddAroRing:
         freesinglebonds = GetFreeBonds(candidate, order=1, sides=True)
-        print "freesinglebonds:", freesinglebonds
+        #print "freesinglebonds:", freesinglebonds
         freedoublebonds = GetFreeBonds(candidate, order=2, notprop='group')
         triplebonds = filter(lambda bond: bond.GetBondType() == bondorder[3],
                              candidate.GetBonds())
         correctbonds = freedoublebonds + triplebonds + freesinglebonds
         if len(correctbonds) > 1:
-            print "n freedoublebonds:", len(correctbonds)
+            #print "n freedoublebonds:", len(correctbonds)
             if debug: print "7",
             stats['nAddArRing'] += 1
             Chem.Kekulize(candidate, True)
@@ -478,16 +480,16 @@ def SingleMutate(candidateraw):
             p = Chem.MolFromSmarts('[h]@&=*(@*)@[h]')
             matches = candidate.GetSubstructMatches(p)
         except RuntimeError:
-            stats['nAddFusionRingFail'] += 1
+            stats['nAddArRingFail'] += 1
         else:
             if matches:
-                stats['nAddFusionRing'] += 1
+                stats['nAddArRing'] += 1
                 match = random.choice(matches)
                 try:
                     candidate = mutate.AddFusionRing(candidate, match)
                     return candidate
                 except MutateFail:
-                    stats['nAddFusionRingFail'] += 1
+                    stats['nAddArRingFail'] += 1
 
     if not change:
         stats['nNoMutation'] += 1

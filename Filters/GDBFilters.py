@@ -2,8 +2,8 @@
 #-*- coding: utf-8 -*-
 debug = False
 
-from filters import NewFilter, NewPatternFilter
 from rdkit import Chem
+from filters import NewFilter, NewPatternFilter
 from rdkithelpers import *
 from molfails import *
 import random
@@ -20,6 +20,7 @@ def GeomFilter(mol):
 
 # BREDT VIOLATIONS
 AllFilters["Bredt's rule"] = NewFilter("Bredt's rule")
+minMacroCycBredt=5
 #BredtViolation=Chem.MolFromSmarts('[R&x2]@;=,:[R&x3](@[R&x2])@[R&x2]')
 #BredtViolation = NewPatternFilter('bredt violation')
 #BredtViolation.SetFilterPattern(Chem.MolFromSmarts('[R]@;=,:[R&x3](@[R])@[R]'))
@@ -34,7 +35,7 @@ def OldBredtsRule(mol):
         atoms = filter(lambda x: x.GetIdx() in match, mol.GetAtoms())
         for atom in atoms:
             SRZ = GetSmallestRingSize(atom)
-            if SRZ >= 8:
+            if SRZ >= minMacroCycBredt:
                 macrocycle = True
                 break
         if not macrocycle: return 'Bredt violation'
@@ -54,7 +55,7 @@ def NewBredt(mol):
             atoms = filter(lambda atom:atom.GetIdx() in match, mol.GetAtoms())
             for atom in atoms:
                 SRZ = GetSmallestRingSize(atom)
-                if SRZ >= 8:
+                if SRZ >= minMacroCycBredt:
                     macrocycle = True
                     break
             if not macrocycle: return 'Bredt violation'
@@ -673,7 +674,9 @@ newfilt.SetFilterPattern(Chem.MolFromSmarts('[!a][N+](=O)[O-]'))
 AllFilters['Non-aromatic nitro'] = newfilt
 
 newfilt = NewPatternFilter('Non-aromatic halogen')
-newfilt.SetFilterPattern(Chem.MolFromSmarts('[!c][F,Cl,Br,I]'))
+#newfilt.SetFilterPattern(Chem.MolFromSmarts('[!c][F,Cl,Br,I]'))
+# Jos changed it to include also aliphatic halogens:
+newfilt.SetFilterPattern(Chem.MolFromSmarts('[!#6][F,Cl,Br,I]'))
 AllFilters['Non-aromatic halogen'] = newfilt
 
 newfilt = NewPatternFilter('Hetero-aromatic halogen')

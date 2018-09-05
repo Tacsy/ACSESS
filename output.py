@@ -13,7 +13,7 @@ debug = False
 # Initialize output files
 ##########################
 
-statcolumns = ('gen', 'diversity', 'nPool', 'nCand', 'nFilt', 'nDups', 'nExcp',
+statcolumns = ('gen', 'diversity', 'nPool', 'nLib', 'nCand', 'nFilt', 'nDups', 'nExcp',
                'nUnFit', 'nAdd', 'nAddFail', 'nAddArRing', 'nAddArRingFail',
                'nAtomType', 'nAtomTypeFail', 'nBreak', 'nBreakFail', 'nFlip',
                'nFlipFail', 'nNewRing', 'nNewRingFail', 'nRemove',
@@ -55,6 +55,7 @@ from collections import defaultdict
 _default = lambda: 0
 _default.__name__ = 'lambda:0'
 stats = defaultdict(_default)
+obstats=defaultdict(_default)
 
 
 def PrintStat(nColumn=4, flush=True):
@@ -76,7 +77,8 @@ def PrintStat(nColumn=4, flush=True):
     return
 
 
-def PrintObjectiveStat(obstats, nColumn=4, flush=True):
+def PrintObjectiveStat(nColumn=4, flush=True):
+    global obstats
     for key in fitnesscolumns[:4]:
         fitnessFile.write(" {:4d} ".format(obstats[key]))
     for function in (np.average, np.min, np.max):
