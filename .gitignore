@@ -2,6 +2,9 @@
 *.pyc
 *.swp
 
+# ignore any output files
+*.log
+
 # ignore my testrun part
 /Examples/testRun_Xuyan/*
 /Examples/*.smi
@@ -10,3 +13,4 @@
 
 # ignore file automatically created by helpers.py
 omega.mol
+
