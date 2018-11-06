@@ -4,7 +4,7 @@ ACSESS (Algorithm for Chemical Space Exploration with Stochastic Search) is a so
 ## DEPENDENCY
 To run ACSESS, you need to have the following dependencies and softwares pre-configured:
 1. Python (ACSESS is written in 2.7.14)
-2. RDKit Python libraries (2018.3 version)
+2. RDKit Python libraries (2018.9 version)
 3. Numpy and Scipy math Python libraries
 4. For Tautomerizing: MolVS 0.1.0
  
