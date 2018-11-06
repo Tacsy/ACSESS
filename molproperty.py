@@ -482,6 +482,37 @@ def CalcCrippenLogPAndMR(mol):
 
 
 ############################################################
+# Calculation of 3D descriptors of a molecule, specifically
+# PMI(Principal Moment of Inertia) and NPR(Normalized Principal Moments ratio)
+# Refs: Sauer and Schwarz JCIM 43:987-1003 (2003)
+############################################################
+
+
+def CalcShapeDescriptors(mol):
+    '''
+    input: Rdkit Mol 
+    output: list of molecule shape descriptors, in the format of 
+    
+    [PMI1, PMI2, PMI3, NPR1, NPR2]
+    '''
+    from rdkit.Chem import Descriptors3D
+
+    mol = Chem.AddHs(mol)
+    #generate 3d conf
+    #this can be optmized later for better sampling of confs
+    AllChem.EmbedMolecule(mol,useExpTorsionAnglePrefs=True,useBasicKnowledge=True)
+    AllChem.UFFOptimizeMolecule(mol)
+
+    PMI1 = Descriptors3D.PMI1(mol)
+    PMI2 = Descriptors3D.PMI2(mol)
+    PMI3 = Descriptors3D.PMI3(mol)
+    NPR1 = Descriptors3D.NPR1(mol)
+    NPR2 = Descriptors3D.NPR2(mol)
+
+    return [PMI1, PMI2, PMI3, NPR1, NPR2]
+
+
+############################################################
 # Determine a molecule type according to ring analysis,
 # belongs to the following categories: aromatic, heteroaromatic,
 # fused-heterocycle, fused-cycle, polyheterocyclic, monoheterocyclic,
@@ -495,4 +526,5 @@ cases.
 
 
 def ClassifyMolType(mol):
+    
     return 0
